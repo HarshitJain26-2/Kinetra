@@ -41,7 +41,7 @@ export class PoseAnalysisService {
       .single();
 
     if (sessionError || !session) {
-      throw new NotFoundError('Session not found');
+      throw new NotFoundError('Session not found', 'SESSION_NOT_FOUND');
     }
 
     if (session.user_id !== userId) {
@@ -60,7 +60,7 @@ export class PoseAnalysisService {
       .single();
 
     if (exError || !exercise) {
-      throw new NotFoundError('Exercise not found');
+      throw new NotFoundError('Exercise not found', 'EXERCISE_NOT_FOUND');
     }
 
     // 3. Generate dynamic contextual feedback based on score and injury status

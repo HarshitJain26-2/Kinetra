@@ -14,7 +14,7 @@ export class NutritionService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundError('Nutrition profile not found');
+      throw new NotFoundError('Nutrition profile not found', 'NUTRITION_PROFILE_NOT_FOUND');
     }
 
     return data;

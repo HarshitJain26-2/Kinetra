@@ -29,9 +29,18 @@
 
 ### Phase 3: Supabase Authentication Middleware & Integration
 - **JWT Verification Engine**: Implemented `requireAuth` in `src/middleware/auth.ts` enforcing `Authorization: Bearer <token>`, validating against Supabase `getUser()`, and injecting typed `req.user` (`id`, `email`, `role`).
-- **Security Safeguards**:
-  - Rejection of missing, malformed, or expired tokens with standard `401 INVALID_TOKEN`.
-  - Zero token logging and zero raw Supabase error leakage.
-  - `SUPABASE_SERVICE_ROLE_KEY` isolated to backend-only processes.
-- **Contract Adherence**: Updated `GET /api/v1/auth/me` and `UsersService` to return `404 PROFILE_NOT_FOUND` when an auth user lacks a `users` row.
-- **Automated Test Suite**: Added `tests/auth.test.ts` (6 automated test cases) validating missing auth, malformed headers, invalid tokens, successful profile retrieval, and missing profile cases.
+- **Security Safeguards**: Rejection of missing, malformed, or expired tokens with standard `401 INVALID_TOKEN`. Zero token logging. Service role key isolated.
+- **Automated Test Suite**: Added `tests/auth.test.ts` (6 test cases).
+
+### Phase 4: Standardize API Responses & Error Handling
+- **Response Format Standardization**: All 27 endpoints follow uniform envelopes:
+  - Success: `{ "success": true, "data": {...}, "meta"?: {...} }` with HTTP 200/201/204.
+  - Error: `{ "success": false, "error": { "code": "...", "message": "...", "details"?: [...] } }`.
+- **Status & Error Code Alignment**: Aligned exact codes from `docs/API_CONTRACT.md`:
+  - `400` (`BAD_REQUEST`, `SESSION_NOT_ACTIVE`, `SESSION_ALREADY_ACTIVE`, `ALREADY_JOINED`, `CHALLENGE_ENDED`).
+  - `401` (`INVALID_TOKEN`).
+  - `403` (`FORBIDDEN`).
+  - `404` (`NOT_FOUND`, `USER_NOT_FOUND`, `PROFILE_NOT_FOUND`, `EXERCISE_NOT_FOUND`, `WORKOUT_NOT_FOUND`, `SESSION_NOT_FOUND`, `INJURY_NOT_FOUND`, `NUTRITION_PROFILE_NOT_FOUND`, `CHALLENGE_NOT_FOUND`).
+  - `422` (`VALIDATION_ERROR` with field details).
+  - `500` (`INTERNAL_SERVER_ERROR` with stack trace suppression in production).
+- **Automated Test Suite**: Added `tests/response_error.test.ts` (8 test cases, 14 total suite tests passing).

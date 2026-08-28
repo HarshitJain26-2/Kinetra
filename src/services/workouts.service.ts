@@ -143,7 +143,7 @@ export class WorkoutsService {
       .single();
 
     if (error || !workout) {
-      throw new NotFoundError('Workout not found');
+      throw new NotFoundError('Workout not found', 'WORKOUT_NOT_FOUND');
     }
 
     // Access check: must be owner or public
@@ -184,7 +184,7 @@ export class WorkoutsService {
       .single();
 
     if (checkError || !existing) {
-      throw new NotFoundError('Workout not found');
+      throw new NotFoundError('Workout not found', 'WORKOUT_NOT_FOUND');
     }
 
     if (existing.creator_id !== userId) {
@@ -252,7 +252,7 @@ export class WorkoutsService {
       .single();
 
     if (checkError || !existing) {
-      throw new NotFoundError('Workout not found');
+      throw new NotFoundError('Workout not found', 'WORKOUT_NOT_FOUND');
     }
 
     if (existing.creator_id !== userId) {

@@ -85,7 +85,7 @@ export class ChallengeService {
       .single();
 
     if (error || !challenge) {
-      throw new NotFoundError('Challenge not found');
+      throw new NotFoundError('Challenge not found', 'CHALLENGE_NOT_FOUND');
     }
 
     const { count } = await supabaseAdmin

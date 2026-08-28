@@ -51,7 +51,7 @@ export class InjuryService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundError('Injury flag not found');
+      throw new NotFoundError('Injury flag not found', 'INJURY_NOT_FOUND');
     }
 
     if (data.user_id !== userId) {

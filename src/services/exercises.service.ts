@@ -56,7 +56,7 @@ export class ExercisesService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundError('Exercise not found');
+      throw new NotFoundError('Exercise not found', 'EXERCISE_NOT_FOUND');
     }
 
     return data;
