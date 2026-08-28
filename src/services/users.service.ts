@@ -14,7 +14,7 @@ export class UsersService {
       .single();
 
     if (error || !user) {
-      throw new NotFoundError('User profile not found');
+      throw new NotFoundError('User profile not found', 'PROFILE_NOT_FOUND');
     }
 
     return user;
@@ -31,7 +31,7 @@ export class UsersService {
       .single();
 
     if (error || !profile) {
-      throw new NotFoundError('User profile not found');
+      throw new NotFoundError('User profile not found', 'USER_NOT_FOUND');
     }
 
     return profile;
@@ -55,7 +55,7 @@ export class UsersService {
       .single();
 
     if (error || !user) {
-      throw new NotFoundError('Failed to update user profile');
+      throw new NotFoundError('Failed to update user profile', 'USER_NOT_FOUND');
     }
 
     return user;

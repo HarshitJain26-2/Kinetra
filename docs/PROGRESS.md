@@ -22,17 +22,16 @@
 ### Phase 2: Production Backend Architecture & Structure
 - **Modular Directory Structure**: Organized backend cleanly into `config/`, `middleware/`, `routes/`, `controllers/`, `services/`, `validators/`, `types/`, and `utils/`.
 - **Config & Environment**: Validated environment configuration loader (`src/config/env.ts`) and Supabase client setup (`src/config/supabase.ts`).
-- **Middleware Infrastructure**:
-  - `src/middleware/auth.ts`: Supabase JWT authentication extracting bearer token and attaching `req.user`.
-  - `src/middleware/validate.ts`: Generic Zod request schema validation for body, query, and path parameters.
-  - `src/middleware/errorHandler.ts`: Central error handler mapping operational AppErrors to standardized JSON error envelopes.
-  - `src/middleware/notFound.ts`: 404 handler.
-- **Service Layer Architecture**:
-  - `UsersService`: Public profile view queries & private profile management.
-  - `ExercisesService`: Master catalog filtering & pagination.
-  - `WorkoutsService`: Workout CRUD with atomic `workout_exercises` full replacement.
-  - `SessionsService`: Session lifecycle tracking (`start`, manual `log-exercise`, `end` with summary metrics).
-  - `PoseAnalysisService`: AI set summary ingestion with auto-generated joint feedback and automatic `injury_flags` creation.
-  - `InjuryService`, `NutritionService`, `ChallengeService`, `LeaderboardService`: Domain business logic and metrics aggregation.
+- **Middleware Infrastructure**: Auth, Zod validation, Central error handler, and 404 handler.
+- **Service Layer Architecture**: Users, Exercises, Workouts, Sessions, Pose Analysis, Injuries, Nutrition, Challenges, and Leaderboard services.
 - **Validation**: Strict Zod schemas implemented across all request params, queries, and bodies.
 - **Build Verification**: TypeScript compilation passed with 0 errors; Express server verified responding to `GET /health`.
+
+### Phase 3: Supabase Authentication Middleware & Integration
+- **JWT Verification Engine**: Implemented `requireAuth` in `src/middleware/auth.ts` enforcing `Authorization: Bearer <token>`, validating against Supabase `getUser()`, and injecting typed `req.user` (`id`, `email`, `role`).
+- **Security Safeguards**:
+  - Rejection of missing, malformed, or expired tokens with standard `401 INVALID_TOKEN`.
+  - Zero token logging and zero raw Supabase error leakage.
+  - `SUPABASE_SERVICE_ROLE_KEY` isolated to backend-only processes.
+- **Contract Adherence**: Updated `GET /api/v1/auth/me` and `UsersService` to return `404 PROFILE_NOT_FOUND` when an auth user lacks a `users` row.
+- **Automated Test Suite**: Added `tests/auth.test.ts` (6 automated test cases) validating missing auth, malformed headers, invalid tokens, successful profile retrieval, and missing profile cases.

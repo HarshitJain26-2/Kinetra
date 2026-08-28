@@ -2,11 +2,12 @@
   "name": "kinetra-backend",
   "version": "1.0.0",
   "description": "AI-Powered Fitness & Sports Ecosystem Backend",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "test": "tsc && node --test dist/tests/**/*.test.js",
+    "start": "node dist/src/index.js"
   },
   "keywords": [
     "fitness",
@@ -31,6 +32,8 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.9",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.2"
   }
