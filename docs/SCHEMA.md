@@ -285,13 +285,16 @@ ALTER TABLE challenges          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE challenge_participants ENABLE ROW LEVEL SECURITY;
 
 -- ── users ───────────────────────────────────────────────────────
--- Owner can read & update their own row
+-- Owner can read & update their own row (private metrics protected)
 CREATE POLICY users_select_own ON users
   FOR SELECT USING (id = auth.uid());
 CREATE POLICY users_update_own ON users
   FOR UPDATE USING (id = auth.uid());
-CREATE POLICY users_select_public ON users
-  FOR SELECT USING (true);
+
+-- Public user profile view (exposes only non-sensitive fields)
+CREATE OR REPLACE VIEW public_profiles AS
+  SELECT id, display_name, avatar_url, fitness_level FROM users;
+GRANT SELECT ON public_profiles TO authenticated;
 
 -- ── workouts ────────────────────────────────────────────────────
 -- Owner has full CRUD; anyone can read public workouts

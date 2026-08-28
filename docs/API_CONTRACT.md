@@ -52,7 +52,7 @@ Verify the current JWT and return the linked user profile.
 
 ### `GET /users/:id`
 
-Fetch a user's public profile.
+Fetch a user's public profile (reads from the `public_profiles` view, not the full `users` table).
 
 | Detail   | Value |
 |----------|-------|
