@@ -8,7 +8,15 @@ export const injuryIdParamSchema = z
   .strict();
 
 export const injuryFilterQuerySchema = paginationQuerySchema.extend({
-  resolved: z.coerce.boolean().optional(),
+  resolved: z
+    .preprocess((val) => {
+      if (typeof val === 'string') {
+        if (val.toLowerCase() === 'true') return true;
+        if (val.toLowerCase() === 'false') return false;
+      }
+      return val;
+    }, z.boolean())
+    .optional(),
   severity: z.enum(['low', 'medium', 'high']).optional(),
 });
 

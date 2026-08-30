@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, ForbiddenError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError, InternalServerError } from '../utils/errors.js';
 import { InjuryFlagRow } from '../types/database.js';
+
+export const ALLOWED_INJURY_UPDATE_FIELDS = ['resolved', 'severity'] as const;
 
 export class InjuryService {
   /**
@@ -31,12 +33,12 @@ export class InjuryService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to list injuries: ${error.message}`);
+      throw new InternalServerError('Failed to list injuries');
     }
 
     return {
       data: data || [],
-      total: count || 0,
+      total: count ?? (data ? data.length : 0),
     };
   }
 
@@ -55,7 +57,7 @@ export class InjuryService {
     }
 
     if (data.user_id !== userId) {
-      throw new ForbiddenError('You do not have permission to view this injury flag');
+      throw new ForbiddenError('You do not have permission to view this injury flag', 'FORBIDDEN');
     }
 
     return data;
@@ -67,15 +69,22 @@ export class InjuryService {
   static async updateInjury(
     userId: string,
     injuryId: string,
-    updates: { resolved?: boolean; severity?: 'low' | 'medium' | 'high'; description?: string }
+    updates: { resolved?: boolean; severity?: 'low' | 'medium' | 'high' }
   ): Promise<InjuryFlagRow> {
     const existing = await this.getInjuryById(userId, injuryId);
 
-    const updatePayload: any = { ...updates };
-    if (updates.resolved === true && !existing.resolved) {
-      updatePayload.resolved_at = new Date().toISOString();
-    } else if (updates.resolved === false) {
-      updatePayload.resolved_at = null;
+    const updatePayload: Record<string, any> = {};
+    if (updates.resolved !== undefined) {
+      updatePayload.resolved = updates.resolved;
+      if (updates.resolved === true && !existing.resolved) {
+        updatePayload.resolved_at = new Date().toISOString();
+      } else if (updates.resolved === false) {
+        updatePayload.resolved_at = null;
+      }
+    }
+
+    if (updates.severity !== undefined) {
+      updatePayload.severity = updates.severity;
     }
 
     const { data, error } = await supabaseAdmin
@@ -86,9 +95,10 @@ export class InjuryService {
       .single();
 
     if (error || !data) {
-      throw new Error(`Failed to update injury: ${error?.message}`);
+      throw new InternalServerError(`Failed to update injury: ${error?.message}`);
     }
 
     return data;
   }
 }
+

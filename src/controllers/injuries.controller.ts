@@ -11,7 +11,11 @@ export class InjuriesController {
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 20;
       const resolved =
-        req.query.resolved !== undefined ? req.query.resolved === 'true' : undefined;
+        req.query.resolved !== undefined
+          ? typeof req.query.resolved === 'boolean'
+            ? req.query.resolved
+            : String(req.query.resolved) === 'true'
+          : undefined;
       const severity = req.query.severity as string | undefined;
 
       const result = await InjuryService.listUserInjuries(req.user.id, {

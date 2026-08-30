@@ -120,6 +120,16 @@
 - **Automated Test Suite**: Added `tests/poseAnalysis.test.ts` (11 test cases covering geometry angle calculations, state machine rep counting, incomplete movement rejection, static frame jitter immunity, authentication, contextual feedback generation, automatic injury flag creation, cross-user isolation, and active session guards). Full test suite now passes 98 tests across 8 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 11: Injury APIs (User Isolation & Resolution Tracking)
+- **Endpoint Implementation & Alignment**:
+  - `GET /api/v1/injuries`: List user's injury flags with database-level `user_id` filtering and optional `resolved` / `severity` query filters.
+  - `GET /api/v1/injuries/:id`: Retrieve single injury flag detail; owner-only privacy guard (403 `FORBIDDEN`).
+  - `PATCH /api/v1/injuries/:id`: Update injury flag status (marking `resolved: true` sets `resolved_at = now()`, `resolved: false` sets `resolved_at = null`) and/or update severity rating (`low`, `medium`, `high`); owner-only guard (403 `FORBIDDEN`).
+- **Ownership & IDOR Protection**: All operations derive user identity strictly from JWT `req.user.id`. Strict allowlist `ALLOWED_INJURY_UPDATE_FIELDS` (`resolved`, `severity`) prevents mass assignment or tampering with `user_id`, `session_exercise_id`, `source`, `body_part`, and `flagged_at`.
+- **Automated Test Suite**: Added `tests/injuries.test.ts` (13 test cases covering authentication, listing, filtering, detail retrieval, resolution timestamp management, severity mutation, cross-user isolation, IDOR prevention, empty body validation, and UUID format checks). Full test suite now passes 111 tests across 9 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 
