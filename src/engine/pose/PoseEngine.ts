@@ -24,6 +24,8 @@ import {
   type LandmarkMap,
 } from '../../utils/geometry.js';
 
+import { analyzeForm } from './formAnalyzer.js';
+
 import type {
   PoseFrame,
   ExerciseAnalysisConfig,
@@ -43,8 +45,9 @@ import type {
  *   2. Apply visibility filtering to discard low-confidence keypoints.
  *   3. Compute joint angles using calculateJointAngle (geometry.ts).
  *   4. Feed angles into ExerciseRepCounter state machine (geometry.ts).
- *   5. Aggregate per-rep scores and overall form score.
- *   6. Return a PoseAnalysisResult that maps cleanly onto PoseAnalysisSetSummaryInput.
+ *   5. Evaluate form rules via formAnalyzer.ts (Phase 20).
+ *   6. Aggregate per-rep scores, overall form score, and form quality alerts.
+ *   7. Return a PoseAnalysisResult that maps cleanly onto PoseAnalysisSetSummaryInput.
  *
  * Each call to PoseEngine.analyze() is stateless — a fresh ExerciseRepCounter
  * is created for every invocation. This represents one complete exercise set.
@@ -56,7 +59,7 @@ export class PoseEngine {
    *
    * @param config  - Normalised exercise configuration (from parsePoseConfig or direct)
    * @param frames  - Ordered frames from any detector (MediaPipe, TFLite, synthetic)
-   * @returns       - Complete analysis result including rep count, form score, and angles
+   * @returns       - Complete analysis result including rep count, form score, angles, and flags
    *
    * @example
    * ```ts
@@ -79,7 +82,7 @@ export class PoseEngine {
     config: ExerciseAnalysisConfig,
     frames: PoseFrame[]
   ): PoseAnalysisResult {
-    const { rep_rule, angle_rules, min_visibility = 0.5 } = config;
+    const { rep_rule, angle_rules, min_visibility = 0.5, form_rules = [] } = config;
 
     // Fresh counter per call — each analyze() represents one exercise set.
     // ExerciseRepCounter handles both decreasing (squat) and increasing (leg press) motion
@@ -94,7 +97,7 @@ export class PoseEngine {
     let lastStage  = 'REST';
     let totalVisibility = 0;
     let visibilitySamples = 0;
-    const flags: FormFlag[] = []; // Populated by Phase 20 Form Analysis
+    const flags: FormFlag[] = [];
 
     for (let frameIdx = 0; frameIdx < frames.length; frameIdx++) {
       const frame = frames[frameIdx];
@@ -112,6 +115,17 @@ export class PoseEngine {
         // calculateJointAngle handles null/undefined inputs and always returns a
         // finite, non-NaN number (0 for degenerate inputs). Verified by Phase 10 tests.
         frameAngles[rule.name] = calculateJointAngle(a, b, c);
+      }
+
+      // ── Form Analysis Evaluation (Phase 20) ────────────────────────────
+      if (form_rules.length > 0) {
+        const frameFlags = analyzeForm(frameAngles, frame, form_rules, {
+          frameIndex: frameIdx,
+          minVisibility: min_visibility,
+        });
+        if (frameFlags.length > 0) {
+          flags.push(...frameFlags);
+        }
       }
 
       // ── Track average visibility across required landmarks ─────────────
@@ -193,6 +207,43 @@ export class PoseEngine {
           errors.push(
             `rep_rule.angle_name "${angle_name}" does not reference any angle_rule (known: ${knownNames.join(', ')})`
           );
+        }
+      }
+    }
+
+    // Validate form_rules if provided
+    if (config.form_rules !== undefined) {
+      if (!Array.isArray(config.form_rules)) {
+        errors.push('form_rules must be an array of FormRule objects');
+      } else {
+        const validSeverities = ['low', 'medium', 'high'];
+        const validConditions = ['lt', 'lte', 'gt', 'gte', 'outside_range', 'inside_range'];
+
+        for (let i = 0; i < config.form_rules.length; i++) {
+          const rule = config.form_rules[i];
+          if (!rule.id || rule.id.trim() === '') {
+            errors.push(`form_rules[${i}].id is required and must not be empty`);
+          }
+          if (!rule.flag || rule.flag.trim() === '') {
+            errors.push(`form_rules[${i}].flag is required and must not be empty`);
+          }
+          if (!validSeverities.includes(rule.severity)) {
+            errors.push(`form_rules[${i}].severity must be 'low', 'medium', or 'high'`);
+          }
+          if (!validConditions.includes(rule.condition)) {
+            errors.push(`form_rules[${i}].condition is invalid (got: ${rule.condition})`);
+          }
+          if (!rule.angle_name && (!Array.isArray(rule.joint_triplet) || rule.joint_triplet.length !== 3)) {
+            errors.push(`form_rules[${i}] must specify either angle_name or a 3-element joint_triplet`);
+          }
+          if (['lt', 'lte', 'gt', 'gte'].includes(rule.condition) && (rule.threshold === undefined || !Number.isFinite(rule.threshold))) {
+            errors.push(`form_rules[${i}].threshold must be a finite number for condition '${rule.condition}'`);
+          }
+          if (['outside_range', 'inside_range'].includes(rule.condition)) {
+            if (!Array.isArray(rule.range) || rule.range.length !== 2 || !Number.isFinite(rule.range[0]) || !Number.isFinite(rule.range[1])) {
+              errors.push(`form_rules[${i}].range must be a [min, max] numeric tuple for condition '${rule.condition}'`);
+            }
+          }
         }
       }
     }

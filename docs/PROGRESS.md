@@ -333,6 +333,78 @@ Inspection of Phase 10 (`src/utils/geometry.ts`) found two production-quality, z
 - **Build**: TypeScript compilation 0 errors (`npm run build`)
 - **Regression**: All 199 previous phase tests continue to pass
 
+---
+
+## Phase 20 — Form Analysis Engine
+
+**Status**: Complete
+
+### Objective
+Implement the Form Analysis layer that evaluates deterministic, configuration-driven form rules against pose landmark frames and joint angles, outputting `FormFlag[]` integrated into `PoseAnalysisResult`.
+
+### Key Components
+
+**`src/engine/pose/formAnalyzer.ts`**
+- `analyzeForm(angles, frame, formRules, options): FormFlag[]`
+  - Evaluates both pre-computed angles (`angle_name`) and on-the-fly joint triplets (`joint_triplet`).
+  - Supports condition operators: `'lt'`, `'lte'`, `'gt'`, `'gte'`, `'outside_range'`, `'inside_range'`.
+  - Fail-safe against missing landmarks, NaN/Infinity coordinates, missing angles, and malformed rules (returns empty flags with zero exceptions).
+  - Emits `FormFlag` objects containing `flag`, `description`, `severity` (`'low' | 'medium' | 'high'`), `measured_angle`, and `frame_index`.
+
+**`src/engine/pose/types.ts`**
+- Added `FormRuleCondition` type (`'lt' | 'lte' | 'gt' | 'gte' | 'outside_range' | 'inside_range'`).
+- Added `FormRule` interface for configuration-driven constraints.
+- Updated `ExerciseAnalysisConfig` to include optional `form_rules?: FormRule[]`.
+
+**`src/engine/pose/PoseEngine.ts`**
+- Integrated `analyzeForm` into `PoseEngine.analyze()` loop.
+- Added `form_rules` structural validation to `PoseEngine.validateConfig()`.
+
+**`src/engine/pose/configs.ts`**
+- Added demonstrative form rules to pre-built configurations:
+  - **Barbell Squat**: Knee over-flexion (`< 60°`, severity: `medium`), Excessive forward lean (`< 45°` torso-thigh angle, severity: `medium`).
+  - **Push-Up**: Elbow over-flexion (`< 60°`, severity: `low`), Body alignment / hip sag (`< 155°` plank line, severity: `high`).
+  - **Bicep Curl**: Incomplete extension (`< 140°` at bottom, severity: `low`).
+
+**`src/engine/pose/configParser.ts`**
+- Updated to parse `form_rules` / `formRules` from raw JSONB.
+- Documented all 9 legacy target-angle key-name variants in Migration 002 seed data.
+
+### Test File Created
+
+**`tests/engine/formAnalyzer.test.ts`** — 18 new unit tests:
+1. Correct form produces no flag.
+2. Lower-body form violation produces expected flag with accurate metadata.
+3. Upper-body form violation produces expected flag with accurate metadata.
+4. Boundary values exactly at threshold evaluate deterministically (`lt` vs `lte`, `gt` vs `gte`).
+5. Just outside acceptable threshold triggers violation.
+6. Missing landmark produces no false-positive flags and throws no error.
+7. Missing angle name produces no false-positive flags.
+8. NaN coordinate / angle produces no false-positive flags.
+9. Infinity coordinate / angle produces no false-positive flags.
+10. Multiple simultaneous violations on the same frame are all captured.
+11. Output is strictly deterministic.
+12. Invalid rule configuration is safely skipped without throwing.
+13. Unknown condition operator is safely skipped.
+14. Severity levels (`'low'`, `'medium'`, `'high'`) are preserved accurately.
+15. Range conditions (`'outside_range'`, `'inside_range'`) evaluate correctly.
+16. Joint triplet calculates angle on the fly from frame landmarks correctly.
+17. Multi-frame sequence in `PoseEngine.analyze()` collects form flags with frame indices.
+18. `PoseEngine.validateConfig()` validates `form_rules` and rejects invalid rule configurations.
+
+### Biomechanical Limitations & Medical Boundary
+- Documented in `docs/POSE_ANALYSIS_MODULE.md` that 2D camera projections cannot reliably evaluate knee-over-toe without calibrated 3D depth and foot direction, so invariant 3-point joint-angle rules are used instead.
+- Established that all form flags are movement/form observations, not medical diagnoses.
+
+### Test Results
+- **New tests**: 18 (in `tests/engine/formAnalyzer.test.ts`)
+- **Total tests**: 235
+- **Passed**: 235
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 217 previous phase tests continue to pass
+
+
 
 
 

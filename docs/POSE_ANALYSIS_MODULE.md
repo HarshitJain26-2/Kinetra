@@ -335,7 +335,104 @@ Landmarks below `config.min_visibility` (default `0.5`) are treated as absent be
 
 ---
 
-## MediaPipe Integration (Phase 19C — not yet implemented)
+## Form Analysis Layer (Phase 20)
+
+### Overview
+
+The Form Analysis layer evaluates deterministic, configuration-driven rules against video frames and computed joint angles. It outputs `FormFlag[]` containing movement observations and risk severity ratings.
+
+**Key principles**:
+- **Pure and deterministic**: Given identical landmarks, the analyzer always produces identical flags.
+- **Fitness observation, not medical diagnosis**: Flags describe movement quality and biomechanical positioning, not clinical diagnoses.
+- **Fail-safe**: Missing keypoints, occluded landmarks, NaN/Infinity coordinates, and invalid rule configurations produce no false alarms and never throw exceptions.
+
+---
+
+### `FormRule` Interface
+
+```typescript
+type FormRuleCondition =
+  | 'lt'             // angle < threshold
+  | 'lte'            // angle <= threshold
+  | 'gt'             // angle > threshold
+  | 'gte'            // angle >= threshold
+  | 'outside_range'  // angle < range[0] || angle > range[1]
+  | 'inside_range';  // angle >= range[0] && angle <= range[1]
+
+interface FormRule {
+  id: string;                          // Unique rule ID (e.g. "squat_excessive_depth")
+  flag: string;                        // Machine-readable code (e.g. "knee_over_flexion")
+  description: string;                 // Human-readable coaching observation
+  severity: 'low' | 'medium' | 'high'; // Movement risk significance
+  angle_name?: string;                 // Evaluates pre-computed angle from AngleRule
+  joint_triplet?: [string, string, string]; // Evaluates on-the-fly angle from 3 landmarks
+  condition: FormRuleCondition;
+  threshold?: number;                  // Angle in degrees for single-value comparisons
+  range?: [number, number];            // [min, max] range in degrees
+}
+```
+
+---
+
+### `FormFlag` Output
+
+```typescript
+interface FormFlag {
+  flag: string;                        // e.g. "knee_over_flexion", "excessive_forward_lean"
+  description: string;                 // Coaching feedback text
+  severity: 'low' | 'medium' | 'high'; // Severity rating
+  measured_angle?: number;             // Joint angle at time of detection (degrees)
+  frame_index?: number;                // Frame index where violation was detected
+}
+```
+
+---
+
+### Severity Classification
+
+| Severity | Meaning | Example |
+|---|---|---|
+| `'low'` | Minor deviation from optimal movement; coaching tip | Elbow flared or slightly short extension |
+| `'medium'` | Significant movement fault affecting repetition quality | Excessive torso forward lean during squat; knee over-flexion |
+| `'high'` | Major structural misalignment; elevated joint stress | Severe hip sag / lumbar hyperextension during plank or push-up |
+
+> **Note**: Severity reflects movement efficiency and form quality. It is **not** a clinical diagnostic indicator.
+
+---
+
+### Supported Built-in Rules
+
+#### 1. Barbell Squat (`SQUAT_ANALYSIS_CONFIG`)
+- **Knee Over-Flexion** (`squat_excessive_depth`): Knee angle < 60° (too acute; excessive joint compression). Severity: `medium`.
+- **Excessive Forward Lean** (`squat_excessive_forward_lean`): Torso-to-thigh angle (`left_shoulder` → `left_hip` → `left_knee`) < 45°. Severity: `medium`.
+
+#### 2. Push-Up (`PUSHUP_ANALYSIS_CONFIG`)
+- **Elbow Over-Flexion** (`pushup_excessive_depth`): Elbow angle < 60° (excessive depth causing anterior shoulder strain). Severity: `low`.
+- **Body Alignment / Hip Sag** (`pushup_hip_sag`): Spine/hip line (`left_shoulder` → `left_hip` → `left_ankle`) < 155° (hips sagging out of straight plank). Severity: `high`.
+
+#### 3. Dumbbell Bicep Curl (`BICEP_CURL_ANALYSIS_CONFIG`)
+- **Incomplete Extension** (`bicep_curl_incomplete_extension`): Elbow angle at bottom < 140° (shortchanging range of motion). Severity: `low`.
+
+---
+
+### Biomechanical Limitations & Knee-Over-Toe Analysis
+
+In 2D camera projections (MediaPipe NormalizedLandmarks without calibrated multi-camera 3D depth):
+- **Knee-over-toe calculation limitation**: A naive 2D comparison (`knee.x > ankle.x`) produces severe false positives depending on camera viewing angle, subject orientation (facing left vs right), and foot angle.
+- **Architecture decision**: Kinetra intentionally avoids unreliable 2D knee-over-toe heuristics. Instead, it relies on invariant 3-point **joint-angle calculations** (such as knee flexion and torso-hip angles) which remain geometrically accurate across camera positions.
+
+---
+
+### Medical & Safety Boundary
+
+Kinetra is a **fitness form observation tool**, not a medical diagnostic device.
+- It does not diagnose injuries or musculoskeletal pathologies.
+- Form flags are intended strictly for exercise technique feedback.
+- If high-severity flags are generated, they represent biomechanical misalignment during exercise performance.
+
+---
+
+## MediaPipe Integration (Phase 19C — future)
 
 The `PoseLandmark` interface is structurally compatible with MediaPipe `NormalizedLandmark`. The only adapter needed is an index→name mapping:
 
@@ -361,17 +458,3 @@ function mediapipeToFrame(raw: NormalizedLandmarkList): PoseFrame {
 
 `PoseEngine` and `PoseAnalysisService` do not change when this adapter is added.
 
----
-
-## Phase 20 — Form Analysis (Next)
-
-`PoseAnalysisResult.flags: FormFlag[]` is already in the output contract but always empty in Phase 19. Phase 20 populates it by evaluating deterministic `FormRule[]` against each frame's angles.
-
-Example future form rules (not yet implemented):
-```typescript
-{ flag: 'knee_valgus',   severity: 'medium', ... }
-{ flag: 'forward_lean',  severity: 'low',    ... }
-{ flag: 'hip_drop',      severity: 'high',   ... }
-```
-
-No interface changes are needed in Phase 20 — the contract is already defined.

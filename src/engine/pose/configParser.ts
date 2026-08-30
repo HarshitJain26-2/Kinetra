@@ -41,14 +41,15 @@ export function parsePoseConfig(
   const vertex   = keypoints[1] ?? 'left_knee';
   const distal   = keypoints[2] ?? 'left_ankle';
 
-  // ── 2. Resolve target angle (7 legacy key-name variants in seed data) ────
+  // ── 2. Resolve target angle (9 legacy key-name variants in seed data) ────
   const targetAngle: number = resolveFiniteNumber(
     [
       data.target_angle,
       // target_angle_range: [min, max] — Bicep Curl
       Array.isArray(data.target_angle_range) ? (data.target_angle_range[0] as number) : undefined,
-      // Lunges / Leg Press
+      // Lunges
       data.knee_angle_target,
+      // Leg Press
       data.knee_flexion_target,
       // Tricep Dips
       data.elbow_flexion_target,
@@ -101,6 +102,13 @@ export function parsePoseConfig(
     threshold_tolerance: thresholdTolerance,
   };
 
+  // ── 8. Extract form rules if present ─────────────────────────────────────
+  const formRules = Array.isArray(data.form_rules)
+    ? data.form_rules
+    : Array.isArray(data.formRules)
+    ? data.formRules
+    : undefined;
+
   return {
     exercise_id: exerciseId,
     exercise_name: exerciseName,
@@ -109,6 +117,7 @@ export function parsePoseConfig(
     angle_rules: [angleRule],
     rep_rule: repRule,
     min_visibility: minVisibility,
+    ...(formRules ? { form_rules: formRules } : {}),
   };
 }
 

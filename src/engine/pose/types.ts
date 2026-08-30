@@ -98,6 +98,56 @@ export interface RepRule {
   threshold_tolerance?: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Form Rule & Quality Alert Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Condition operator for a form rule evaluation.
+ *
+ * - 'lt': measured angle < threshold
+ * - 'lte': measured angle <= threshold
+ * - 'gt': measured angle > threshold
+ * - 'gte': measured angle >= threshold
+ * - 'outside_range': measured angle < range[0] || measured angle > range[1]
+ * - 'inside_range': measured angle >= range[0] && measured angle <= range[1]
+ */
+export type FormRuleCondition =
+  | 'lt'
+  | 'lte'
+  | 'gt'
+  | 'gte'
+  | 'outside_range'
+  | 'inside_range';
+
+/**
+ * A single deterministic form constraint evaluated per frame.
+ *
+ * Can evaluate either:
+ *   1. A pre-calculated angle referenced by `angle_name` (matches an AngleRule.name), OR
+ *   2. An on-the-fly joint triplet `[proximal, vertex, distal]` calculated from frame landmarks.
+ */
+export interface FormRule {
+  /** Unique rule identifier, e.g. "squat_excessive_depth" */
+  id: string;
+  /** Short machine-readable violation code, e.g. "knee_over_flexion" */
+  flag: string;
+  /** Human-readable coaching observation describing the movement issue */
+  description: string;
+  /** Clinical/movement significance level */
+  severity: 'low' | 'medium' | 'high';
+  /** References an AngleRule.name evaluated for this exercise */
+  angle_name?: string;
+  /** On-the-fly joint triplet: [proximal, vertex, distal] landmark names */
+  joint_triplet?: [string, string, string];
+  /** Comparison condition */
+  condition: FormRuleCondition;
+  /** Single angle threshold for lt/lte/gt/gte (degrees) */
+  threshold?: number;
+  /** [min, max] range for outside_range / inside_range (degrees) */
+  range?: [number, number];
+}
+
 /**
  * Complete, normalised configuration for analysing a specific exercise.
  *
@@ -124,6 +174,11 @@ export interface ExerciseAnalysisConfig {
    * Default: 0.5
    */
   min_visibility?: number;
+  /**
+   * Optional form rules evaluated against frame angles/landmarks.
+   * Empty or absent means no form violations will be evaluated.
+   */
+  form_rules?: FormRule[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,17 +187,16 @@ export interface ExerciseAnalysisConfig {
 
 /**
  * A triggered form-quality alert.
- * Currently populated by Phase 20 (Form Analysis).
- * Defined here so the output contract is stable before Phase 20 ships.
+ * Populated by Phase 20 (Form Analysis).
  */
 export interface FormFlag {
-  /** Short machine-readable violation code (e.g. "knee_valgus", "hip_drop") */
+  /** Short machine-readable violation code (e.g. "knee_over_flexion", "excessive_forward_lean") */
   flag: string;
   /** Human-readable explanation of the violation */
   description: string;
-  /** Clinical risk level */
+  /** Movement significance level */
   severity: 'low' | 'medium' | 'high';
-  /** Joint angle measured when this violation was detected */
+  /** Joint angle measured when this violation was detected (degrees) */
   measured_angle?: number;
   /** Zero-based index within the frames array that triggered this flag */
   frame_index?: number;

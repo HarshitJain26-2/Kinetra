@@ -30,6 +30,7 @@ export const SQUAT_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
   exercise_id: 'barbell-squat',
   exercise_name: 'Barbell Squat',
   required_landmarks: [
+    'left_shoulder',
     'left_hip',  'left_knee',  'left_ankle',
     'right_hip', 'right_knee', 'right_ankle',
   ],
@@ -54,6 +55,26 @@ export const SQUAT_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
     threshold_tolerance: 10,
   },
   min_visibility: 0.5,
+  form_rules: [
+    {
+      id:          'squat_excessive_depth',
+      flag:        'knee_over_flexion',
+      description: 'Knee flexion angle is excessively acute (< 60°); maintain controlled parallel depth.',
+      severity:    'medium',
+      angle_name:  'left_knee_angle',
+      condition:   'lt',
+      threshold:   60,
+    },
+    {
+      id:            'squat_excessive_forward_lean',
+      flag:          'excessive_forward_lean',
+      description:   'Torso-to-thigh angle indicates excessive forward lean; keep chest upright.',
+      severity:      'medium',
+      joint_triplet: ['left_shoulder', 'left_hip', 'left_knee'],
+      condition:     'lt',
+      threshold:     45,
+    },
+  ],
 };
 
 /**
@@ -103,7 +124,7 @@ export const PUSHUP_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
   required_landmarks: [
     'left_shoulder',  'left_elbow',  'left_wrist',
     'right_shoulder', 'right_elbow', 'right_wrist',
-    'left_hip',
+    'left_hip',       'left_ankle',
   ],
   angle_rules: [
     {
@@ -126,6 +147,26 @@ export const PUSHUP_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
     threshold_tolerance: 10,
   },
   min_visibility: 0.5,
+  form_rules: [
+    {
+      id:          'pushup_excessive_depth',
+      flag:        'elbow_over_flexion',
+      description: 'Elbow flexion exceeds recommended depth (< 60°); avoid excessive anterior shoulder strain.',
+      severity:    'low',
+      angle_name:  'left_elbow_angle',
+      condition:   'lt',
+      threshold:   60,
+    },
+    {
+      id:            'pushup_hip_sag',
+      flag:          'body_alignment_deviation',
+      description:   'Torso and hips deviate from a neutral straight plank line.',
+      severity:      'high',
+      joint_triplet: ['left_shoulder', 'left_hip', 'left_ankle'],
+      condition:     'lt',
+      threshold:     155,
+    },
+  ],
 };
 
 /**
@@ -157,4 +198,15 @@ export const BICEP_CURL_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
     threshold_tolerance: 10,
   },
   min_visibility: 0.5,
+  form_rules: [
+    {
+      id:          'bicep_curl_incomplete_extension',
+      flag:        'incomplete_extension',
+      description: 'Elbow did not reach full extension (> 140°) at the bottom of the curl.',
+      severity:    'low',
+      angle_name:  'left_elbow_angle',
+      condition:   'lt',
+      threshold:   140,
+    },
+  ],
 };
