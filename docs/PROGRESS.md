@@ -144,6 +144,18 @@
 - **Automated Test Suite**: Added `tests/nutrition.test.ts` (8 test cases), `tests/challenges.test.ts` (9 test cases), and `tests/leaderboard.test.ts` (2 test cases). Full test suite now passes 130 tests across 12 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 13: Database Safety & RLS Security Audit
+- **Security Audit & RLS Hardening**:
+  - Audited all PostgreSQL tables and views: `users`, `workouts`, `workout_exercises`, `sessions`, `session_exercises`, `injury_flags`, `nutrition_profiles`, `challenges`, `challenge_participants`, `public_profiles`.
+  - Created migration `migrations/003_security_rls_hardening.sql` enforcing `WITH CHECK` clauses on all UPDATE policies to prevent ownership reassignment, creator/user spoofing, and privilege escalation.
+  - Added complete DELETE policies across all user-owned and child entities.
+  - Verified `public_profiles` view exposes only non-sensitive fields (`id`, `display_name`, `avatar_url`, `fitness_level`) protecting private health/body metrics.
+  - Confirmed server-side `SUPABASE_SERVICE_ROLE_KEY` usage is strictly confined to trusted backend initialization and never exposed to clients, logs, or response payloads.
+- **Automated Test Suite**: Added `tests/security.test.ts` (7 comprehensive security tests covering public profile privacy, workout IDOR isolation, workout modification/deletion boundaries, session & pose analysis access controls, injury flag isolation, payload spoofing rejection, and secret key leakage protection). Full test suite now passes 137 tests across 13 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+- **Live RLS Verification Status**: Schema/Migration audited (live test NOT AVAILABLE without live Supabase instance).
+
+
 
 
 
