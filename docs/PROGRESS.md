@@ -107,6 +107,20 @@
 - **Automated Test Suite**: Added `tests/sessions.test.ts` (13 test cases covering authentication, session lifecycle, concurrent active session guard, private workout reference checks, manual exercise logging, end-session computation, list filtering, detail retrieval, and authorization boundaries). Full test suite now passes 87 tests across 7 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 10: Pose Analysis, Rep Counting & Form Scoring
+- **Endpoint Implementation & Alignment**:
+  - `POST /api/v1/pose-analysis`: Ingestion of completed AI set summaries from on-device MediaPipe landmark tracking. Creates `session_exercises` row and automatically raises `injury_flags` entries with severity ratings on flagged joint deviations.
+- **Computer Vision & Geometry Foundation**:
+  - Implemented `calculateJointAngle` in `src/utils/geometry.ts` for deterministic joint angle calculation (0°–180°) handling zero-length vectors and floating-point edge cases safely.
+  - Implemented `ExerciseRepCounter` state machine with hysteresis-based stage transitions (`REST` → `TRANSITION` → `INFLECTION` → `RECOVERY` → `REST`) preventing jitter-induced double-counting and incomplete repetition increments.
+  - Calculated bounded form scores (0–100) based on peak angle deviations from optimal exercise configurations.
+- **Ownership & Session Validation**:
+  - Derived session ownership from JWT claims (`req.user.id`). Reject cross-user pose submission attempts (403 `FORBIDDEN`).
+  - Active session guard enforced (400 `SESSION_NOT_ACTIVE` for ended/inactive sessions).
+- **Automated Test Suite**: Added `tests/poseAnalysis.test.ts` (11 test cases covering geometry angle calculations, state machine rep counting, incomplete movement rejection, static frame jitter immunity, authentication, contextual feedback generation, automatic injury flag creation, cross-user isolation, and active session guards). Full test suite now passes 98 tests across 8 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 

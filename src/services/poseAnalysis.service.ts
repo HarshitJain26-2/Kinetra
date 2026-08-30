@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, ForbiddenError, BadRequestError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/errors.js';
 
 export interface PoseAnalysisSetSummaryInput {
   session_id: string;
@@ -45,7 +45,7 @@ export class PoseAnalysisService {
     }
 
     if (session.user_id !== userId) {
-      throw new ForbiddenError('You do not own this session');
+      throw new ForbiddenError('You do not own this session', 'FORBIDDEN');
     }
 
     if (session.status !== 'active') {
@@ -95,7 +95,7 @@ export class PoseAnalysisService {
       .single();
 
     if (seError || !sessionExercise) {
-      throw new Error(`Failed to record session exercise: ${seError?.message}`);
+      throw new InternalServerError(`Failed to record session exercise: ${seError?.message}`);
     }
 
     // 5. If injury flagged, auto-create injury_flags record
@@ -134,3 +134,4 @@ export class PoseAnalysisService {
     };
   }
 }
+
