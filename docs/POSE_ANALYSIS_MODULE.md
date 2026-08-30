@@ -541,5 +541,64 @@ The adapter is strictly an input normalizer:
 - **Missing / Low-Visibility Keypoints**: Missing landmarks (visibility < 0.5 or omitted arrays) are safely ignored without throwing exceptions or generating false alerts.
 - **Performance**: High throughput — 600 frames (~20 seconds of video @ 30fps) process in under 10ms.
 
+---
+
+## Mobile → Backend Integration (Phase 24)
+
+### Architectural Boundary
+
+- **Mobile Client**:
+  - Owns camera video stream capture and live preview.
+  - Owns on-device pose model inference (MediaPipe / TFLite).
+  - Can run the lightweight `mediapipeAdapter` + `PoseEngine` on-device or submit set summaries directly to the API.
+- **Backend API**:
+  - Does **NOT** receive raw video, video streams, or frame-by-frame network requests.
+  - Does **NOT** require TensorFlow, PyTorch, or GPU dependencies.
+  - Exposes `POST /api/v1/pose-analysis` which receives a single completed set summary DTO after the set finishes.
+  - Persists completed sets in `session_exercises` and auto-records `injury_flags` when movement faults or severe form breakdown occurs.
+
+### Integration Pipeline
+
+```
+Mobile Camera
+     │
+     ▼
+On-Device ML Inference (MediaPipe / TFLite 33 Keypoints)
+     │
+     ▼
+adaptMediaPipeSequence()
+     │
+     ▼
+PoseEngine.analyze()
+     │
+     ▼
+mapPoseResultToApiPayload(result, metadata)
+     │
+     ▼
+POST /api/v1/pose-analysis
+     │
+     ▼
+Supabase (session_exercises + injury_flags)
+```
+
+### Mobile-to-Backend Payload Example
+
+```json
+{
+  "session_id": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+  "exercise_id": "c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+  "set_number": 1,
+  "reps": 10,
+  "weight_kg": 80.0,
+  "duration_sec": 45,
+  "form_score": 92,
+  "injury_flag": false,
+  "flagged_body_parts": [],
+  "rep_scores": [90, 92, 95, 91, 93, 92, 90, 94, 93, 90],
+  "notes": "Good set on Barbell Squat. Consistent depth and biomechanics."
+}
+```
+
+
 
 

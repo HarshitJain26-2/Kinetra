@@ -561,6 +561,39 @@ Validated against realistic MediaPipe-style landmark fixtures; real-camera video
 - **Build**: TypeScript compilation 0 errors (`npm run build`)
 - **Regression**: All 260 previous phase tests continue to pass
 
+---
+
+## Phase 24 — Pose → API Integration Hardening
+
+**Status**: Complete
+
+### Objective
+Harden the integration boundary between `PoseEngine` output and the HTTP API (`POST /api/v1/pose-analysis`), ensuring clean DTO mapping, strict validation against NaN/Infinity/unauthorized injection, preservation of authorization and ownership invariants, and zero backend ML/video processing bloat.
+
+### Key Components
+
+**`src/engine/pose/apiMapper.ts`**
+- `mapPoseResultToApiPayload(result, metadata)`: Transforms pure `PoseAnalysisResult` and mobile metadata into a strictly typed `PoseAnalysisSetSummaryInput`.
+- `extractFlaggedBodyParts(flags)`: Maps form violations to anatomical body part names (`knee`, `lower_back`, `elbow`, `hips`, etc.).
+- `validatePoseAnalysisPayload(payload)`: Strict runtime sanitizer validating finite ranges for `reps`, `form_score`, `rep_scores`, `injury_flag`, and `flagged_body_parts`.
+
+**`tests/integration/poseApiHardening.test.ts`** — 6 integration tests:
+1. Clean squat set transforms into valid API DTO.
+2. Squat with form violations maps flagged body parts and injury flag to API DTO.
+3. Incomplete rep transforms safely to 0 reps in API DTO.
+4. Strict validation rejects NaN, Infinity, or out-of-bounds numbers.
+5. `POST /api/v1/pose-analysis` with full valid pipeline payload succeeds with 201 Created and creates `session_exercises`.
+6. Complete transformation benchmarks (30, 60, 300, 600 frames) execute in < 25ms.
+
+### Test Results
+- **New tests**: 6 (in `tests/integration/poseApiHardening.test.ts`)
+- **Total tests**: 287
+- **Passed**: 287
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 281 previous phase tests continue to pass
+
+
 
 
 
