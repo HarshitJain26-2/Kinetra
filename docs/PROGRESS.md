@@ -593,6 +593,31 @@ Harden the integration boundary between `PoseEngine` output and the HTTP API (`P
 - **Build**: TypeScript compilation 0 errors (`npm run build`)
 - **Regression**: All 281 previous phase tests continue to pass
 
+---
+
+## Phase 25 — Real On-Device Pose Inference Architecture & Contract
+
+**Status**: Complete (Architecture, Engine Adapter, Integration Contracts & Documentation Established; Real Physical Device Camera Validation Pending Mobile App Build)
+
+### Objective
+Audit repository for mobile application codebase, establish architectural boundaries separating on-device vision ML from server-side persistence, document pretrained model ingestion specifications, and provide mobile engineers with the complete integration contract for camera stream throttling, MediaPipe adapter ingestion, live feedback loops, and `POST /api/v1/pose-analysis` set summary persistence.
+
+### Key Deliverables & Validation Status
+
+1. **Repository Audit**: Confirmed this repository hosts the core Kinetra backend and framework-independent pose-analysis engine. The standalone mobile client codebase resides in a separate client repository/workspace.
+2. **`docs/MOBILE_POSE_INTEGRATION.md`**: Created comprehensive on-device pose integration guide covering:
+   - Pretrained model requirements (Google MediaPipe Pose Landmarker / TFLite MoveNet).
+   - 33-point normalized keypoint format ($x, y, z, \text{visibility}$).
+   - Camera frame throttling and drop-frame policies.
+   - `adaptMediaPipeFrame` and `PoseEngine.analyze()` client usage.
+   - Set summary generation and `POST /api/v1/pose-analysis` API contract.
+   - Offline buffering and background sync.
+3. **Status Distinction**:
+   - **Automated Engine & API Validation**: `PASS` (287 / 287 tests passing).
+   - **Real Device Hardware Camera Validation**: `PENDING PHYSICAL DEVICE TESTING` (to be performed on iOS/Android client builds).
+   - **Production Readiness**: Backend API & Engine Ready for Mobile Integration.
+
+
 
 
 
