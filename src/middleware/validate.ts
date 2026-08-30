@@ -24,11 +24,10 @@ export const validateRequest = (schemas: RequestValidationSchemas) => {
     } catch (error) {
       if (error instanceof ZodError) {
         const formattedErrors = error.issues.map((err: ZodIssue) => ({
-          field: err.path.join('.'),
+          field: err.path.join('.') || 'request',
           message: err.message,
-          code: err.code,
         }));
-        next(new ValidationError('Invalid request data format', formattedErrors));
+        next(new ValidationError('Request validation failed', formattedErrors));
       } else {
         next(error);
       }

@@ -44,3 +44,17 @@
   - `422` (`VALIDATION_ERROR` with field details).
   - `500` (`INTERNAL_SERVER_ERROR` with stack trace suppression in production).
 - **Automated Test Suite**: Added `tests/response_error.test.ts` (8 test cases, 14 total suite tests passing).
+
+### Phase 5: Request Validation Hardening
+- **Validation Audit**: Completed comprehensive endpoint-by-endpoint audit across all 27 API Contract routes + 2 profile convenience routes.
+- **Route Parameters Validation**: All UUID route parameters (`:id`, `:user_id`, `:workout_id`, `:session_id`, `:exercise_id`, `:challenge_id`, `:injury_id`) strictly validated before reaching controllers and database layers; invalid UUIDs immediately return HTTP 422 `VALIDATION_ERROR`.
+- **Query Bounds Hardening**: Pagination queries bounded (`page >= 1`, `1 <= limit <= 100`, default 20); added query validator to `GET /challenges/:id/participants`; validated enums and string lengths for filters.
+- **Workout Validation Hardening**: Enforced non-negative `order_index`, positive `target_sets`, positive `target_reps`, non-negative `target_weight_kg`, and strictly checked for duplicate `order_index` entries in nested exercises via custom Zod refinement.
+- **Fitness Metrics Protection**: Non-negative constraints enforced on reps, weight, duration, and bounded 0–100 form scores across manual logging and AI pose analysis.
+- **AI Pose Analysis Hardening**: Enforced 0–100 range on `form_score` and `rep_scores` array, bounded array lengths (`rep_scores` <= 500, `flagged_body_parts` <= 50), and prevented raw landmark/video payload ingestion.
+- **Mass Assignment & Ownership Security**: Enforced `.strict()` on sensitive mutation bodies; user ownership strictly derived from authenticated `req.user.id` rather than request bodies.
+- **Real Calendar Date Validation**: Added UTC-based calendar date validation helper checking genuine Gregorian calendar validity (e.g. rejecting Feb 30) and enforced `end_date >= start_date` on challenges.
+- **Early Validation Verification**: Proved through service/database spies that invalid requests are rejected at middleware level before any controller, service, or Supabase database execution.
+- **Automated Tests**: Added `tests/validation.test.ts` (19 validation tests). Full test suite now passes 33 tests across 3 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+

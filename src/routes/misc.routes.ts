@@ -18,6 +18,7 @@ import {
   challengeFilterQuerySchema,
   leaderboardQuerySchema,
 } from '../validators/misc.validators.js';
+import { paginationQuerySchema } from '../validators/common.validators.js';
 
 export const injuriesRouter = Router();
 export const nutritionRouter = Router();
@@ -106,7 +107,7 @@ challengesRouter.post(
 challengesRouter.get(
   '/:id/participants',
   requireAuth,
-  validateRequest({ params: challengeIdParamSchema }),
+  validateRequest({ params: challengeIdParamSchema, query: paginationQuerySchema }),
   ChallengesController.getParticipants
 );
 

@@ -47,7 +47,7 @@ export class ConflictError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string = 'Validation failed', details?: any) {
+  constructor(message: string = 'Request validation failed', details?: any) {
     super(422, 'VALIDATION_ERROR', message, details);
   }
 }
