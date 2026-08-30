@@ -164,6 +164,34 @@
 - **Automated Test Suite**: Added `tests/errors.test.ts` (9 test cases covering 404 unknown routes, 401 unauthenticated requests, 422 validation rejections, PostgreSQL error code mappings, and 500 runtime error sanitization). Full test suite now passes 146 tests across 14 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 15: Comprehensive Backend Testing & QA
+- **Pre-phase Audit**: Inspected all routes, controllers, services, validators, middleware, and existing test files. Verified Phase 14 error handler is correctly mounted in `src/app.ts` (post-router, post-notFound). Confirmed 146 tests passing as baseline.
+- **Gaps Identified**:
+  - No test for logging to completed/cancelled sessions
+  - No test for ending a session owned by another user
+  - Missing mass assignment tests for `id`, `created_at`, `updated_at`, `user_id` across nutrition, injuries, session exercises, challenges, and pose analysis
+  - No privilege escalation coverage for challenge join and nutrition profile ownership
+  - No data leakage assertion across leaderboard and challenge participants
+  - No error envelope consistency test across all 401-returning endpoints
+  - No explicit PostgreSQL error code-to-HTTP-status mapping regression tests
+  - No RLS static audit (migration file structure verification)
+  - No source-code audit confirming services never use `supabaseAnon` for writes
+- **Phase 15 Test Suite** (`tests/phase15_comprehensive.test.ts`): 48 new tests across 9 sections:
+  - **Section 1 (Session Business Logic)**: completed/cancelled session rejects, non-owner session end (403), user isolation assertion on list, public workout start by another owner, strict schema rejection of unknown fields.
+  - **Section 2 (Mass Assignment — All Domains)**: Rejected injection of `id`, `created_at`, `updated_at`, `user_id`, `creator_id`, `is_active`, `is_admin`, `role`, `email`, `session_id`, `session_exercise_id`, `resolved_at` across all 8 protected endpoints.
+  - **Section 3 (Privilege Escalation)**: Nutrition profile ownership via JWT only; challenge `creator_id` always from JWT; join challenge `user_id` always from JWT.
+  - **Section 4 (Data Leakage)**: `/health` endpoint clean; 500 response has no stack/env fields; 23505 error never leaks raw SQL; leaderboard never exposes private body metrics; challenge participants response exposes only public fields.
+  - **Section 5 (Error Envelope Consistency)**: All 8 authenticated endpoints return `{ success: false, error: { code, message } }` on 401; validation errors include `details[]` array with field+message; 404 unknown route envelope; PostgreSQL error codes to HTTP status regression.
+  - **Section 6 (API Contract Regression)**: `GET /auth/me` returns identity; `POST /workouts` returns 201 with nested exercises; `GET /sessions` returns paginated `meta`; `DELETE /workouts/:id` returns 204 no-body; `POST /pose-analysis` returns required contract fields.
+  - **Section 7 (Validation Boundary)**: `set_number=0`, negative reps, negative `target_value`, negative `protein_g`, unknown severity enum, notes >2000 chars, whitespace-only title, invalid difficulty enum.
+  - **Section 8 (RLS Static Audit)**: Migration 003 existence; USING+WITH CHECK clause counts; all critical tables covered; public_profiles view private field exclusion; service-role key not hardcoded; `/health` clean; all service files use only `supabaseAdmin` (never `supabaseAnon`).
+  - **Section 9 (IDOR)**: Cross-user session exercise log (403); cross-user injury read (403); cross-user workout delete (403); non-existent resource returns 404 not 403.
+- **Automated Test Suite**: 194 tests across 23 suites — all passing, 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+- **RLS Static Audit Result**: PASS (live test NOT AVAILABLE without live Supabase instance; migration 003 fully audited statically).
+- **Security Testing Result**: PASS — IDOR, mass assignment, privilege escalation, data leakage, credential leakage, error sanitization all verified.
+
+
 
 
 
