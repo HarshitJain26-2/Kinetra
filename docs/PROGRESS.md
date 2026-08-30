@@ -155,6 +155,16 @@
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 - **Live RLS Verification Status**: Schema/Migration audited (live test NOT AVAILABLE without live Supabase instance).
 
+### Phase 14: Centralized Error Handling & Sanitization
+- **Centralized Error Handling Architecture**:
+  - Enhanced `errorHandler` in `src/middleware/errorHandler.ts` to intercept and safely map database/system errors to standardized API envelopes.
+  - Mapped PostgreSQL error codes: `23505` (unique violation) -> 409 `DUPLICATE_RECORD`, `23503` (foreign key violation) -> 400 `BAD_REQUEST`, `23502` (not null violation) -> 422 `VALIDATION_ERROR`, `22P02` (invalid syntax/uuid) -> 422 `VALIDATION_ERROR`, and PostgREST `PGRST116` -> 404 `NOT_FOUND`.
+  - Expanded `AppError` taxonomy in `src/utils/errors.ts` with `DuplicateRecordError` and `DatabaseError`.
+  - Enforced production error sanitization preventing leakage of stack traces, SQL queries, internal filesystem paths, and environment secrets.
+- **Automated Test Suite**: Added `tests/errors.test.ts` (9 test cases covering 404 unknown routes, 401 unauthenticated requests, 422 validation rejections, PostgreSQL error code mappings, and 500 runtime error sanitization). Full test suite now passes 146 tests across 14 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 

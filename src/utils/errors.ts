@@ -46,9 +46,21 @@ export class ConflictError extends AppError {
   }
 }
 
+export class DuplicateRecordError extends AppError {
+  constructor(message: string = 'A record with these values already exists', code: string = 'DUPLICATE_RECORD') {
+    super(409, code, message);
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message: string = 'Request validation failed', details?: any) {
     super(422, 'VALIDATION_ERROR', message, details);
+  }
+}
+
+export class DatabaseError extends AppError {
+  constructor(message: string = 'Database operation failed', code: string = 'DATABASE_ERROR') {
+    super(500, code, message);
   }
 }
 
@@ -57,3 +69,4 @@ export class InternalServerError extends AppError {
     super(500, code, message);
   }
 }
+
