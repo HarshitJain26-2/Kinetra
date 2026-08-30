@@ -8,8 +8,10 @@ export const exerciseIdParamSchema = z
   .strict();
 
 export const exerciseFilterQuerySchema = paginationQuerySchema.extend({
-  muscle_group: z.string().max(50).optional(),
+  muscle_group: z.string().trim().max(50).optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
-  equipment: z.string().max(50).optional(),
+  equipment: z.string().trim().max(50).optional(),
+  search: z.string().trim().max(100).optional(),
 });
+
 

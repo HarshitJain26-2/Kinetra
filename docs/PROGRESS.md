@@ -67,7 +67,21 @@
 - **Authorization & Ownership Integrity**: All user-specific operations derive caller identity strictly from `req.user.id` (JWT-verified). Zero reliance on client-supplied body/query/route IDs for ownership.
 - **Privacy Boundary & Leakage Protection**: Enforced strict isolation between private profile metrics (`weight_kg`, `height_cm`, `date_of_birth`, `gender`, `onboarding_done`, `email`) and public profile fields (`id`, `display_name`, `avatar_url`, `fitness_level`).
 - **Mass Assignment Defense**: Implemented strict Zod schema validation combined with service-level allowlist filtering (`ALLOWED_PROFILE_UPDATE_FIELDS`), preventing unauthorized modification of sensitive attributes (`role`, `is_admin`, `email`, `created_at`, `id`).
-- **Automated Test Suite**: Added `tests/users.test.ts` (16 test assertions across 14 test cases). Full test suite now passes 49 tests across 4 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+### Phase 7: Exercise APIs (Read-Only Master Catalog)
+
+- **Endpoint Implementation & Alignment**:
+  - `GET /api/v1/exercises`: Authenticated listing of exercise catalog supporting filtered queries (`muscle_group`, `difficulty`, `equipment`, `search`) and paginated response envelopes (`data[]` + `meta { page, limit, total }`).
+  - `GET /api/v1/exercises/:id`: Authenticated single exercise details retrieval including `description`, `pose_landmarks`, and `demo_video_url`.
+- **Read-Only Master Catalog Guard**: Verified exercises are system/seed data (14 master exercises in Migration 002) with no user-level write endpoints (`POST`, `PUT`, `DELETE` routes return HTTP 404).
+- **Query Parameter Validation & SQL Injection Protection**:
+  - Bounded pagination (`page >= 1`, `1 <= limit <= 100`, default 20).
+  - Validated `difficulty` enum (`easy`, `medium`, `hard`) and bounded string lengths (`muscle_group`, `equipment`, `search`).
+  - Parameterized Supabase query builder `.ilike()` / `.eq()` / `.order()` / `.range()` preventing SQL injection.
+- **Downstream Compatibility**: Verified `ExerciseRow` structure provides stable UUIDs and MediaPipe `pose_landmarks` compatible with downstream workouts, session tracking, and pose-analysis modules.
+- **Automated Test Suite**: Added `tests/exercises.test.ts` (10 test cases covering authentication, listing, filters, validation, detail retrieval, 404 handling, and read-only protection). Full test suite now passes 59 tests across 5 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
 
 

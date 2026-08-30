@@ -10,6 +10,7 @@ export class ExercisesController {
       const muscle_group = req.query.muscle_group as string | undefined;
       const difficulty = req.query.difficulty as string | undefined;
       const equipment = req.query.equipment as string | undefined;
+      const search = req.query.search as string | undefined;
 
       const result = await ExercisesService.listExercises({
         page,
@@ -17,6 +18,7 @@ export class ExercisesController {
         muscle_group,
         difficulty,
         equipment,
+        search,
       });
 
       sendSuccess(res, result.data, 200, {
@@ -38,3 +40,4 @@ export class ExercisesController {
     }
   }
 }
+

@@ -1,11 +1,12 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, InternalServerError } from '../utils/errors.js';
 import { ExerciseRow } from '../types/database.js';
 
 export interface ExerciseFilterOptions {
   muscle_group?: string;
   difficulty?: string;
   equipment?: string;
+  search?: string;
   page?: number;
   limit?: number;
 }
@@ -30,18 +31,21 @@ export class ExercisesService {
     if (options.equipment) {
       query = query.ilike('equipment', `%${options.equipment}%`);
     }
+    if (options.search) {
+      query = query.ilike('name', `%${options.search}%`);
+    }
 
     const { data, count, error } = await query
       .order('name', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to list exercises: ${error.message}`);
+      throw new InternalServerError('Failed to list exercises');
     }
 
     return {
       data: data || [],
-      total: count || 0,
+      total: count ?? (data ? data.length : 0),
     };
   }
 
@@ -62,3 +66,4 @@ export class ExercisesService {
     return data;
   }
 }
+
