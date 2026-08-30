@@ -1,0 +1,160 @@
+/**
+ * Kinetra Pose Analysis Core Engine — Built-In Exercise Configurations
+ *
+ * Pre-built ExerciseAnalysisConfig objects for exercises that exist in the
+ * Migration 002 seed data. Use these directly without DB access for:
+ *   - Unit tests
+ *   - Mobile/ML team integration prototyping
+ *   - Fallback configs when pose_landmarks JSONB is missing
+ *
+ * Framework-independent: no Express, Supabase, or HTTP imports.
+ *
+ * These IDs use the exercise name as a slug — replace with actual catalog UUIDs
+ * when wiring to the live database.
+ */
+
+import type { ExerciseAnalysisConfig } from './types.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lower-Body Exercises
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Barbell Squat
+ *
+ * Primary angle: knee flexion (left side dominant).
+ * Rep: stand (160°) → parallel depth (90°) → stand.
+ * Seed data: keypoints = ["left_hip","left_knee","left_ankle",...], target_angle = 90.
+ */
+export const SQUAT_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
+  exercise_id: 'barbell-squat',
+  exercise_name: 'Barbell Squat',
+  required_landmarks: [
+    'left_hip',  'left_knee',  'left_ankle',
+    'right_hip', 'right_knee', 'right_ankle',
+  ],
+  angle_rules: [
+    {
+      name:     'left_knee_angle',
+      proximal: 'left_hip',
+      vertex:   'left_knee',
+      distal:   'left_ankle',
+    },
+    {
+      name:     'right_knee_angle',
+      proximal: 'right_hip',
+      vertex:   'right_knee',
+      distal:   'right_ankle',
+    },
+  ],
+  rep_rule: {
+    angle_name:          'left_knee_angle',
+    rest_angle:          160,  // Standing — knee nearly straight
+    target_angle:        90,   // Parallel depth
+    threshold_tolerance: 10,
+  },
+  min_visibility: 0.5,
+};
+
+/**
+ * Dumbbell Lunges
+ *
+ * Primary angle: front knee flexion.
+ * Rep: stand (160°) → knee to 90° → stand.
+ */
+export const LUNGE_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
+  exercise_id: 'dumbbell-lunges',
+  exercise_name: 'Dumbbell Lunges',
+  required_landmarks: [
+    'left_hip',  'left_knee',  'left_ankle',
+    'right_hip', 'right_knee', 'right_ankle',
+  ],
+  angle_rules: [
+    {
+      name:     'left_knee_angle',
+      proximal: 'left_hip',
+      vertex:   'left_knee',
+      distal:   'left_ankle',
+    },
+  ],
+  rep_rule: {
+    angle_name:          'left_knee_angle',
+    rest_angle:          160,
+    target_angle:        90,
+    threshold_tolerance: 10,
+  },
+  min_visibility: 0.5,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Upper-Body Exercises
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Push-Up
+ *
+ * Primary angle: elbow flexion (left side dominant).
+ * Rep: arms extended (160°) → chest to floor (90°) → extended.
+ * Seed data: keypoints = ["left_shoulder","left_elbow","left_wrist",...], target_angle = 90.
+ */
+export const PUSHUP_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
+  exercise_id: 'push-up',
+  exercise_name: 'Push-Up',
+  required_landmarks: [
+    'left_shoulder',  'left_elbow',  'left_wrist',
+    'right_shoulder', 'right_elbow', 'right_wrist',
+    'left_hip',
+  ],
+  angle_rules: [
+    {
+      name:     'left_elbow_angle',
+      proximal: 'left_shoulder',
+      vertex:   'left_elbow',
+      distal:   'left_wrist',
+    },
+    {
+      name:     'right_elbow_angle',
+      proximal: 'right_shoulder',
+      vertex:   'right_elbow',
+      distal:   'right_wrist',
+    },
+  ],
+  rep_rule: {
+    angle_name:          'left_elbow_angle',
+    rest_angle:          160,  // Arms extended at top of push-up
+    target_angle:        90,   // Chest near floor
+    threshold_tolerance: 10,
+  },
+  min_visibility: 0.5,
+};
+
+/**
+ * Dumbbell Bicep Curl
+ *
+ * Primary angle: elbow flexion.
+ * Rep: arm extended (160°) → full curl (~35°) → extended.
+ * Seed data: target_angle_range = [35, 160].
+ */
+export const BICEP_CURL_ANALYSIS_CONFIG: ExerciseAnalysisConfig = {
+  exercise_id: 'dumbbell-bicep-curl',
+  exercise_name: 'Dumbbell Bicep Curl',
+  required_landmarks: [
+    'left_shoulder',  'left_elbow',  'left_wrist',
+    'right_shoulder', 'right_elbow', 'right_wrist',
+  ],
+  angle_rules: [
+    {
+      name:     'left_elbow_angle',
+      proximal: 'left_shoulder',
+      vertex:   'left_elbow',
+      distal:   'left_wrist',
+    },
+  ],
+  rep_rule: {
+    angle_name:          'left_elbow_angle',
+    rest_angle:          160,  // Arm straight/hanging
+    target_angle:        35,   // Full contraction at top
+    threshold_tolerance: 10,
+  },
+  min_visibility: 0.5,
+};

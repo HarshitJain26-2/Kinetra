@@ -224,6 +224,116 @@
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 - **Runtime Verification**: Verified `GET http://localhost:5000/health` returns `200 OK` with `{ status: "ok" }`.
 
+---
+
+## Phase 19 — Pose Analysis Core Engine
+
+**Status**: Complete
+
+### Objective
+Create a standalone, framework-independent Pose Analysis Core Engine that accepts exercise configuration and pose landmark frames and returns deterministic movement metrics (rep count, form score, joint angles).
+
+### Architecture Decision — Reuse over Rewrite
+Inspection of Phase 10 (`src/utils/geometry.ts`) found two production-quality, zero-dependency implementations already in place:
+- `calculateJointAngle(a, b, c)` — pure math, handles null/NaN/Infinity/zero-vectors
+- `ExerciseRepCounter` — stateful 4-stage state machine (REST → TRANSITION → INFLECTION → RECOVERY)
+
+**Neither was duplicated.** Both are imported by the new `PoseEngine` from `src/utils/geometry.ts`.
+
+### New Files Created
+
+**`src/engine/pose/types.ts`**
+- `PoseLandmark` — named landmark interface (structurally compatible with MediaPipe `NormalizedLandmark`)
+- `PoseFrame` — one frame of named landmarks with optional timestamp
+- `AngleRule` — defines which joint to measure (`proximal`, `vertex`, `distal`)
+- `RepRule` — defines how to count reps (`rest_angle`, `target_angle`, `threshold_tolerance`)
+- `ExerciseAnalysisConfig` — complete exercise configuration
+- `FormFlag` — form violation alert (defined here; populated by Phase 20)
+- `PoseAnalysisResult` — output contract mapping onto `PoseAnalysisSetSummaryInput`
+- Re-exports `LandmarkPoint`, `LandmarkMap`, `RepStage`, `RepCounterConfig` from `geometry.ts` (single source of truth)
+
+**`src/engine/pose/configParser.ts`**
+- `parsePoseConfig(id, name, raw)` — normalises `exercises.pose_landmarks` JSONB into `ExerciseAnalysisConfig`
+- Handles all 7 legacy key-name variants in Migration 002 seed data (`target_angle`, `knee_angle_target`, `knee_flexion_target`, `elbow_flexion_target`, `hip_hinge_depth`, `lockout_angle`, `target_angle_range[0]`)
+- Infers `rest_angle` (absent from all 14 seed exercises) from `target_angle` direction
+- Safe to call with `null` — always returns a valid, finite config
+
+**`src/engine/pose/PoseEngine.ts`**
+- `PoseEngine.analyze(config, frames): PoseAnalysisResult` — stateless orchestrator
+  - Converts `PoseFrame[]` → `LandmarkMap` per frame
+  - Filters landmarks by `min_visibility` threshold (default 0.5)
+  - Calls `calculateJointAngle` from `geometry.ts`
+  - Feeds angles into `ExerciseRepCounter` from `geometry.ts`
+  - Aggregates `rep_count`, `average_form_score`, `rep_scores`, `confidence`
+  - Each call creates a fresh `ExerciseRepCounter` — no state leaks between calls
+- `PoseEngine.validateConfig(config): string[]` — validates config consistency
+
+**`src/engine/pose/configs.ts`**
+- `SQUAT_ANALYSIS_CONFIG` — Barbell Squat, knee flexion, rest=160°, target=90°
+- `LUNGE_ANALYSIS_CONFIG` — Dumbbell Lunges, knee flexion
+- `PUSHUP_ANALYSIS_CONFIG` — Push-Up, elbow flexion, rest=160°, target=90°
+- `BICEP_CURL_ANALYSIS_CONFIG` — Bicep Curl, elbow flexion, rest=160°, target=35°
+- All usable without DB access
+
+### Test File Created
+
+**`tests/engine/PoseEngine.test.ts`** — 18 new unit tests:
+
+| # | Test | Coverage |
+|---|---|---|
+| 1 | Engine computes 90° joint correctly | Angle calculation |
+| 2 | Engine computes 180° straight joint | Angle calculation |
+| 3 | Engine computes acute angle (135°) | Formula generality |
+| 4 | Missing landmark → 0°, no exception | Null safety |
+| 5 | Zero-length vector → 0°, no crash | Degenerate input |
+| 6 | NaN coordinate → 0°, output never NaN | NaN safety |
+| 7 | Infinity coordinate → 0°, output finite | Infinity safety |
+| 8 | Counter starts at 0 in REST stage | Initial state |
+| 9 | Complete rep → count=1, form score=84 | Rep completion |
+| 10 | Incomplete rep → count=0 | No partial counting |
+| 11 | 30 static frames → count=0 | No false triggers |
+| 12 | Oscillating near threshold → count=0 | Hysteresis |
+| 13 | Two calls, same input → same result | Reset / isolation |
+| 14 | Same input × 2 → deterministic | Determinism |
+| 15 | Valid config passes validation | Config validation |
+| 16 | Empty exercise_id fails validation | Config validation |
+| 17 | Mismatched angle_name fails validation | Config validation |
+| 18 | All 6 JSONB key variants normalised | parsePoseConfig |
+
+### Documentation Created
+- **`docs/POSE_ANALYSIS_MODULE.md`** — full module reference for mobile/ML integration team:
+  - All TypeScript interfaces with examples
+  - `PoseEngine.analyze()` / `validateConfig()` / `parsePoseConfig()` API reference
+  - Harshit integration example (PoseEngine → PoseAnalysisService)
+  - State machine diagram
+  - Visibility filtering explanation
+  - MediaPipe adapter path (Phase 19C)
+  - Phase 20 Form Analysis forward reference
+
+### Existing Files — Unchanged
+- `src/utils/geometry.ts` — reused as-is
+- `src/services/poseAnalysis.service.ts` — unchanged
+- All controllers, validators, routes, middleware
+- All existing 199 tests
+- Database schema and migrations
+- `docs/API_CONTRACT.md`
+
+### Constraints Respected
+- No Express, Supabase, JWT, or HTTP imports inside `src/engine/`
+- No duplicate `calculateJointAngle` or `ExerciseRepCounter`
+- No database schema changes
+- No API contract changes
+- No new npm packages
+
+### Test Results
+- **New tests**: 18 (in `tests/engine/PoseEngine.test.ts`)
+- **Total tests**: 217
+- **Passed**: 217
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 199 previous phase tests continue to pass
+
+
 
 
 
