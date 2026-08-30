@@ -34,48 +34,55 @@ export interface GeneratedMealPlan {
   meals: MealPlanItem[];
 }
 
+import { NutritionEngine } from '../engine/nutrition/NutritionEngine.js';
+import { UsersService } from './users.service.js';
+
+export interface NutritionUserContext {
+  height_cm?: number | null;
+  weight_kg?: number | null;
+}
+
 /**
  * Interface abstraction for pluggable AI recommendation providers
  */
 export interface INutritionRecommendationProvider {
-  generate(profile: NutritionProfileRow, options: NutritionRecommendationOptions): Promise<GeneratedMealPlan>;
+  generate(
+    profile: NutritionProfileRow,
+    options: NutritionRecommendationOptions,
+    userContext?: NutritionUserContext | null
+  ): Promise<GeneratedMealPlan>;
 }
 
 /**
  * Deterministic fallback / baseline recommendation provider
+ * Delegates pure rule-based calculation to NutritionEngine
  */
 export class DeterministicNutritionProvider implements INutritionRecommendationProvider {
-  async generate(profile: NutritionProfileRow, options: NutritionRecommendationOptions): Promise<GeneratedMealPlan> {
-    const targetCal = profile.daily_cal_target || 2400;
-    const targetProtein = profile.protein_g || 150;
-    const targetCarbs = profile.carbs_g || 260;
-    const targetFat = profile.fat_g || 70;
-    const numMeals = options.num_meals || 4;
-
-    const calPerMeal = Math.round(targetCal / numMeals);
-    const proteinPerMeal = Math.round(targetProtein / numMeals);
-    const carbsPerMeal = Math.round(targetCarbs / numMeals);
-    const fatPerMeal = Math.round(targetFat / numMeals);
-
-    const mealNames = ['Breakfast', 'Lunch', 'Pre-Workout Fuel', 'Dinner', 'Evening Snack'];
-    const meals: MealPlanItem[] = Array.from({ length: numMeals }).map((_, i) => ({
-      name: mealNames[i] || `Meal ${i + 1}`,
-      calories: calPerMeal,
-      protein_g: proteinPerMeal,
-      carbs_g: carbsPerMeal,
-      fat_g: fatPerMeal,
-      items:
-        profile.diet_type === 'vegetarian'
-          ? ['Paneer paratha', 'Greek yogurt', 'Banana shake']
-          : ['Grilled chicken breast', 'Brown rice', 'Steamed broccoli'],
-    }));
+  async generate(
+    profile: NutritionProfileRow,
+    options: NutritionRecommendationOptions,
+    userContext?: NutritionUserContext | null
+  ): Promise<GeneratedMealPlan> {
+    const result = NutritionEngine.recommend({
+      height_cm: userContext?.height_cm,
+      weight_kg: userContext?.weight_kg,
+      goal: profile.goal,
+      diet_type: profile.diet_type,
+      allergies: profile.allergies,
+      daily_cal_target: profile.daily_cal_target,
+      protein_g: profile.protein_g,
+      carbs_g: profile.carbs_g,
+      fat_g: profile.fat_g,
+      num_meals: options.num_meals,
+      date: options.date,
+    });
 
     return {
-      date: options.date || new Date().toISOString().split('T')[0],
-      total_calories: targetCal,
-      diet_type: profile.diet_type,
-      goal: profile.goal,
-      meals,
+      date: result.date,
+      total_calories: result.total_calories,
+      diet_type: result.diet_type,
+      goal: result.goal,
+      meals: result.meals,
     };
   }
 }
@@ -149,7 +156,22 @@ export class NutritionService {
     options: NutritionRecommendationOptions
   ): Promise<{ meal_plan: GeneratedMealPlan; saved: boolean }> {
     const profile = await this.getProfile(userId);
-    const mealPlan = await this.recommendationProvider.generate(profile, options);
+
+    let userContext: NutritionUserContext | null = null;
+    try {
+      const user = await UsersService.getCurrentUserProfile(userId);
+      if (user) {
+        userContext = {
+          height_cm: user.height_cm,
+          weight_kg: user.weight_kg,
+        };
+      }
+    } catch {
+      // Gracefully continue without user metrics if user record is uninitialized/unmocked
+      userContext = null;
+    }
+
+    const mealPlan = await this.recommendationProvider.generate(profile, options, userContext);
 
     // Save generated plan back to profile
     const { error: saveError } = await supabaseAdmin

@@ -432,29 +432,76 @@ Kinetra is a **fitness form observation tool**, not a medical diagnostic device.
 
 ---
 
-## MediaPipe Integration (Phase 19C — future)
+## MediaPipe Pose Landmark Adapter (Phase 22)
 
-The `PoseLandmark` interface is structurally compatible with MediaPipe `NormalizedLandmark`. The only adapter needed is an index→name mapping:
+> **Module path**: `src/engine/pose/adapters/mediapipeAdapter.ts`  
+> **Types path**: `src/engine/pose/adapters/types.ts`  
+> **Role**: Pure transformation boundary between external MediaPipe/TFLite models and the canonical `PoseFrame` pipeline.
 
-```typescript
-// Future: src/engine/pose/adapters/mediapipe.adapter.ts
-const MEDIAPIPE_NAMES: Record<number, string> = {
-  23: 'left_hip', 24: 'right_hip',
-  25: 'left_knee', 26: 'right_knee',
-  27: 'left_ankle', 28: 'right_ankle',
-  // ...
-};
+### Target Pipeline
 
-function mediapipeToFrame(raw: NormalizedLandmarkList): PoseFrame {
-  return {
-    landmarks: raw.map((lm, i) => ({
-      name: MEDIAPIPE_NAMES[i] ?? `landmark_${i}`,
-      x: lm.x, y: lm.y, z: lm.z,
-      visibility: lm.visibility,
-    })).filter(lm => lm.name in MEDIAPIPE_NAMES),
-  };
-}
+```
+External MediaPipe / TFLite Model
+               │
+               ▼
+   adaptMediaPipeSequence()
+               │
+               ▼
+        PoseFrame[]
+               │
+               ▼
+       PoseEngine.analyze()
+               │
+               ▼
+       PoseAnalysisResult
 ```
 
-`PoseEngine` and `PoseAnalysisService` do not change when this adapter is added.
+### Key Adapter Functions
+
+1. `adaptMediaPipeLandmark(raw, fallbackIndex?, options?)`:
+   - Maps 0–32 MediaPipe indices and camelCase names (e.g. `leftShoulder`) to canonical `snake_case` names (e.g. `left_shoulder`).
+   - Validates coordinates: requires finite numbers for `x` and `y`.
+   - Preserves `z` depth if finite.
+   - Preserves `visibility` score (falling back to `presence` if visibility is absent).
+   - Degenerate inputs (null, NaN, Infinity) are safely omitted without throwing exceptions.
+
+2. `adaptMediaPipeFrame(rawFrame, options?)`:
+   - Converts an array of 33 landmarks, dictionary record, or `{ landmarks, timestamp_ms }` container into a canonical `PoseFrame`.
+
+3. `adaptMediaPipeSequence(rawSequence, options?)`:
+   - Converts an array of raw MediaPipe frames into `PoseFrame[]`.
+   - Preserves frame order and timestamps strictly.
+   - Deterministic and fail-safe.
+
+### Canonical Landmark Mappings (0–32)
+
+| Index | Canonical Name | Index | Canonical Name |
+|---|---|---|---|
+| 0 | `nose` | 17 | `left_pinky` |
+| 1 | `left_eye_inner` | 18 | `right_pinky` |
+| 2 | `left_eye` | 19 | `left_index` |
+| 3 | `left_eye_outer` | 20 | `right_index` |
+| 4 | `right_eye_inner` | 21 | `left_thumb` |
+| 5 | `right_eye` | 22 | `right_thumb` |
+| 6 | `right_eye_outer` | 23 | `left_hip` |
+| 7 | `left_ear` | 24 | `right_hip` |
+| 8 | `right_ear` | 25 | `left_knee` |
+| 9 | `mouth_left` | 26 | `right_knee` |
+| 10 | `mouth_right` | 27 | `left_ankle` |
+| 11 | `left_shoulder` | 28 | `right_ankle` |
+| 12 | `right_shoulder` | 29 | `left_heel` |
+| 13 | `left_elbow` | 30 | `right_heel` |
+| 14 | `right_elbow` | 31 | `left_foot_index` |
+| 15 | `left_wrist` | 32 | `right_foot_index` |
+| 16 | `right_wrist` | | |
+
+### Architectural Boundary
+
+The adapter is strictly an input normalizer:
+- **Does NOT** perform rep counting (handled by `PoseEngine` / `ExerciseRepCounter`).
+- **Does NOT** perform form analysis (handled by `formAnalyzer`).
+- **Does NOT** interact with Supabase or the database.
+- **Does NOT** make network or external API calls.
+- **Does NOT** interpolate or synthesize missing coordinates.
+
 

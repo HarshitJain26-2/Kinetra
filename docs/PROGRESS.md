@@ -404,6 +404,120 @@ Implement the Form Analysis layer that evaluates deterministic, configuration-dr
 - **Build**: TypeScript compilation 0 errors (`npm run build`)
 - **Regression**: All 217 previous phase tests continue to pass
 
+---
+
+## Phase 21 — Nutrition Recommender
+
+**Status**: Complete
+
+### Objective
+Create a standalone, framework-independent nutrition engine under `src/engine/nutrition/` that performs deterministic, rule-based calculations (Goal + BMI + Diet Type → Caloric Target + Macronutrient Distribution + Meal Plan), integrated via the existing `INutritionRecommendationProvider` abstraction without changing HTTP contracts or database schemas.
+
+### Key Components Created & Updated
+
+**`src/engine/nutrition/types.ts`**
+- `NutritionRecommendationInput` (biometrics, goal, diet_type, manual overrides, meal count, date)
+- `NutritionRecommendationOutput` (date, bmi, bmi_category, total_calories, targets, diet_type, goal, meals)
+- `BMIResult` (`bmi`, `category`: `'underweight' | 'normal' | 'overweight' | 'obese' | 'unknown'`)
+- `MacroTargets` (`calories`, `protein_g`, `carbs_g`, `fat_g`)
+- `MealPlanItem` (`name`, `calories`, `protein_g`, `carbs_g`, `fat_g`, `items`)
+
+**`src/engine/nutrition/foodCatalog.ts`**
+- Small deterministic food catalog organized by diet type (`omnivore`, `vegetarian`, `vegan`, `keto`, `paleo`, `custom`) and meal timing (`breakfast`, `lunch`, `snack`, `dinner`).
+- Allergen tags (`gluten`, `dairy`, `nuts`, `soy`, `egg`, `seafood`) and rule-based exclusion filtering via `getFilteredMealItems()`.
+
+**`src/engine/nutrition/NutritionEngine.ts`**
+- `calculateBMI(height_cm, weight_kg)`: Pure BMI calculation with numerical validation and fallback to `{ bmi: null, category: 'unknown' }` for degenerate inputs.
+- `determineCalories(input, bmiResult)`:
+  - Explicit manual override (`daily_cal_target`) takes 100% precedence.
+  - Otherwise derives baseline: `weight_kg * 30` (or 2200 fallback) + BMI category modifier (underweight: +200, overweight: -200, obese: -400) + goal modifier (lose_weight: -400, gain_muscle: +400, maintain: 0, general_health: 0). Enforces 1200 kcal floor.
+- `determineMacros(calories, input)`:
+  - Manual overrides (`protein_g`, `carbs_g`, `fat_g`) take precedence if provided.
+  - Unspecified targets derived from goal/diet ratios:
+    - `lose_weight`: 35% Protein, 35% Carbs, 30% Fat.
+    - `gain_muscle`: 30% Protein, 45% Carbs, 25% Fat.
+    - `maintain` / `general_health`: 25% Protein, 50% Carbs, 25% Fat.
+    - `keto`: 25% Protein, 5% Carbs, 70% Fat.
+- `generateMeals(calories, macros, input)`: Distributes calories and macros across `num_meals` (1–8) with varied, allergen-filtered meal options.
+- `recommend(input)`: Orchestrator returning `NutritionRecommendationOutput`.
+
+**`src/services/nutrition.service.ts`**
+- Updated `DeterministicNutritionProvider` to delegate pure calculation to `NutritionEngine.recommend()`.
+- Updated `generateRecommendation()` to gracefully provide user biometrics (`height_cm`, `weight_kg`) from `UsersService` to the provider.
+
+### Test Files & Coverage
+
+**`tests/engine/NutritionEngine.test.ts`** — 10 new unit tests:
+1. Calculates BMI and categorizes correctly (`underweight`, `normal`, `overweight`, `obese`).
+2. Degenerate BMI inputs safely return null and category unknown without throwing.
+3. Explicit `daily_cal_target` override takes 100% precedence.
+4. Goal adjustments (lose_weight deficit, gain_muscle surplus, maintain) apply when `daily_cal_target` is null.
+5. Calorie target enforces 1200 kcal safety floor.
+6. Manual macro overrides take precedence over calculated ratios.
+7. Calculated macro ratios differ appropriately by goal and keto diet.
+8. Generates diet-specific meals across vegetarian, vegan, keto, paleo, and omnivore.
+9. Allergen exclusion filtering prevents tagged allergens from appearing in meal suggestions.
+10. `NutritionEngine.recommend()` is 100% deterministic — same input produces identical output.
+
+### Test Results
+- **New tests**: 10 (in `tests/engine/NutritionEngine.test.ts`)
+- **Total tests**: 245
+- **Passed**: 245
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 235 previous phase tests continue to pass
+
+---
+
+## Phase 22 — MediaPipe / Pose Landmark Adapter
+
+**Status**: Complete
+
+### Objective
+Create a framework-independent pose landmark adapter under `src/engine/pose/adapters/` that maps MediaPipe/TFLite 33-point keypoint streams into canonical `PoseFrame` objects directly consumable by `PoseEngine`, without changing API contracts, rep counting, or form analysis rules.
+
+### Key Components
+
+**`src/engine/pose/adapters/types.ts`**
+- `MediaPipeRawLandmark` (optional `x`, `y`, `z`, `visibility`, `presence`, `name`, `index`)
+- `MediaPipeRawFrame` (`landmarks`, `timestamp_ms`, `frame_index`)
+- `MediaPipeAdapterOptions` (`minVisibility`)
+
+**`src/engine/pose/adapters/mediapipeAdapter.ts`**
+- `MEDIAPIPE_INDEX_TO_CANONICAL_NAME`: Explicit 33-point MediaPipe keypoint index (0–32) to canonical snake_case string mapping (`left_shoulder`, `right_knee`, `left_ankle`, `left_foot_index`, etc.).
+- `adaptMediaPipeLandmark(raw, fallbackIndex?, options?)`: Validates finite coordinates (`x`, `y`), preserves `z`, preserves `visibility` (with `presence` fallback), and maps to canonical name.
+- `adaptMediaPipeFrame(rawFrame, options?)`: Normalizes landmark arrays, dictionary records, or frame objects with timestamps into canonical `PoseFrame`.
+- `adaptMediaPipeSequence(rawSequence, options?)`: Converts full multi-frame video sequences preserving chronological ordering and timestamps.
+
+### Test File Created
+
+**`tests/engine/mediapipeAdapter.test.ts`** — 15 new unit tests:
+1. Valid MediaPipe landmark converts correctly with x, y, z, and visibility.
+2. All canonical body-part indices (0–32) map to correct names.
+3. Resolves camelCase names (e.g. `leftShoulder`) and string indices.
+4. Falls back to presence score when visibility is omitted.
+5. Missing or null landmark returns null safely without throwing.
+6. Unknown landmark index or unresolvable name returns null safely.
+7. NaN or Infinity coordinates are rejected and return null.
+8. Malformed landmark objects return null without throwing.
+9. Adapts full 33-point MediaPipe array frame with timestamp.
+10. Handles keyed dictionary frame format safely.
+11. Empty frame returns `{ landmarks: [] }` safely.
+12. Sequence adapter preserves frame ordering and timestamps.
+13. Empty sequence returns empty array.
+14. Conversion is strictly deterministic.
+15. End-to-end integration: `PoseEngine.analyze()` directly consumes adapted MediaPipe frames and counts reps accurately.
+
+### Test Results
+- **New tests**: 15 (in `tests/engine/mediapipeAdapter.test.ts`)
+- **Total tests**: 260
+- **Passed**: 260
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 245 previous phase tests continue to pass
+
+
+
 
 
 
