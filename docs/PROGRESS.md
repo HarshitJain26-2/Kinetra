@@ -58,3 +58,16 @@
 - **Automated Tests**: Added `tests/validation.test.ts` (19 validation tests). Full test suite now passes 33 tests across 3 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 6: User Profile APIs & Privacy Boundary
+- **Endpoint Implementation & Alignment**:
+  - `GET /api/v1/auth/me`: Authenticated profile extraction linking Supabase auth identity with user profile row.
+  - `GET /api/v1/users/me`: Authenticated user's private profile retrieval with user claims.
+  - `PUT /api/v1/users/me`: Authenticated user profile updates with explicit allowlist filtering.
+  - `GET /api/v1/users/:id`: Public profile retrieval strictly querying the `public_profiles` view.
+- **Authorization & Ownership Integrity**: All user-specific operations derive caller identity strictly from `req.user.id` (JWT-verified). Zero reliance on client-supplied body/query/route IDs for ownership.
+- **Privacy Boundary & Leakage Protection**: Enforced strict isolation between private profile metrics (`weight_kg`, `height_cm`, `date_of_birth`, `gender`, `onboarding_done`, `email`) and public profile fields (`id`, `display_name`, `avatar_url`, `fitness_level`).
+- **Mass Assignment Defense**: Implemented strict Zod schema validation combined with service-level allowlist filtering (`ALLOWED_PROFILE_UPDATE_FIELDS`), preventing unauthorized modification of sensitive attributes (`role`, `is_admin`, `email`, `created_at`, `id`).
+- **Automated Test Suite**: Added `tests/users.test.ts` (16 test assertions across 14 test cases). Full test suite now passes 49 tests across 4 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+

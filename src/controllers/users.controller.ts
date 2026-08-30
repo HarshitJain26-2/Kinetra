@@ -42,7 +42,10 @@ export class UsersController {
       }
 
       const fullProfile = await UsersService.getCurrentUserProfile(req.user.id);
-      sendSuccess(res, fullProfile);
+      sendSuccess(res, {
+        ...fullProfile,
+        email: req.user.email,
+      });
     } catch (error) {
       next(error);
     }
@@ -55,9 +58,13 @@ export class UsersController {
       }
 
       const updated = await UsersService.updateProfile(req.user.id, req.body);
-      sendSuccess(res, updated);
+      sendSuccess(res, {
+        ...updated,
+        email: req.user.email,
+      });
     } catch (error) {
       next(error);
     }
   }
 }
+
