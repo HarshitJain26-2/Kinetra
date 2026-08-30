@@ -129,6 +129,22 @@
 - **Automated Test Suite**: Added `tests/injuries.test.ts` (13 test cases covering authentication, listing, filtering, detail retrieval, resolution timestamp management, severity mutation, cross-user isolation, IDOR prevention, empty body validation, and UUID format checks). Full test suite now passes 111 tests across 9 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 12: Remaining APIs (Nutrition, Challenges & Leaderboard)
+- **Endpoint Implementation & Alignment**:
+  - `GET /api/v1/nutrition/profile`: Authenticated retrieval of personal nutrition targets.
+  - `PUT /api/v1/nutrition/profile`: Upsert user nutrition targets using strict `ALLOWED_NUTRITION_UPDATE_FIELDS` allowlist.
+  - `POST /api/v1/nutrition/recommend`: Contract-compliant meal plan recommendation using `INutritionRecommendationProvider` interface (clean abstraction ready for future pluggable AI integration without external LLM dependencies).
+  - `POST /api/v1/challenges`: Challenge creation with authenticated creator ownership (`creator_id = req.user.id`).
+  - `GET /api/v1/challenges`: Active challenge listing with filters (`type`, `mine=true`) and bounded pagination.
+  - `GET /api/v1/challenges/:id`: Single challenge details with participant count aggregation.
+  - `POST /api/v1/challenges/:id/join`: Join active challenge with duplicate prevention (`ALREADY_JOINED`) and expired challenge rejection (`CHALLENGE_ENDED`).
+  - `GET /api/v1/challenges/:id/participants`: Ranked leaderboard of challenge participants.
+  - `GET /api/v1/leaderboard`: Global or challenge-specific leaderboard exposing public profile data only (`id`, `display_name`, `avatar_url`) protecting private health/body metrics.
+- **Privacy & Security Boundaries**: Enforced database-level user isolation, IDOR protection across all remaining domains, and parameter preprocessing.
+- **Automated Test Suite**: Added `tests/nutrition.test.ts` (8 test cases), `tests/challenges.test.ts` (9 test cases), and `tests/leaderboard.test.ts` (2 test cases). Full test suite now passes 130 tests across 12 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 

@@ -54,7 +54,12 @@ export class ChallengesController {
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 20;
       const type = req.query.type as string | undefined;
-      const mine = req.query.mine ? req.query.mine === 'true' : undefined;
+      const mine =
+        req.query.mine !== undefined
+          ? typeof req.query.mine === 'boolean'
+            ? req.query.mine
+            : String(req.query.mine) === 'true'
+          : undefined;
 
       const result = await ChallengeService.listChallenges(req.user.id, {
         page,

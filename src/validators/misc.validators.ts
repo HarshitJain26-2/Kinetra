@@ -82,11 +82,18 @@ export const createChallengeBodySchema = z
 
 export const challengeFilterQuerySchema = paginationQuerySchema.extend({
   type: z.enum(['streak', 'volume', 'time', 'custom']).optional(),
-  mine: z.coerce.boolean().optional(),
+  mine: z
+    .preprocess((val) => {
+      if (typeof val === 'string') {
+        if (val.toLowerCase() === 'true') return true;
+        if (val.toLowerCase() === 'false') return false;
+      }
+      return val;
+    }, z.boolean())
+    .optional(),
 });
 
 export const leaderboardQuerySchema = paginationQuerySchema.extend({
   challenge_id: uuidSchema.optional(),
   metric: z.string().max(50).default('total_reps').optional(),
 });
-

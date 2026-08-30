@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
+import { InternalServerError } from '../utils/errors.js';
 import { ChallengeService } from './challenge.service.js';
 
 export class LeaderboardService {
@@ -22,11 +23,11 @@ export class LeaderboardService {
     const offset = (page - 1) * limit;
     const { data: users, count, error } = await supabaseAdmin
       .from('public_profiles')
-      .select('id, display_name, avatar_url, fitness_level', { count: 'exact' })
+      .select('id, display_name, avatar_url', { count: 'exact' })
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to fetch global leaderboard: ${error.message}`);
+      throw new InternalServerError('Failed to fetch global leaderboard');
     }
 
     const leaderboardData = (users || []).map((u, i) => ({
@@ -36,13 +37,14 @@ export class LeaderboardService {
         display_name: u.display_name,
         avatar_url: u.avatar_url,
       },
-      value: 1000 - (offset + i) * 20, // Baseline ranked metric
+      value: Math.max(0, 1000 - (offset + i) * 20),
       metric: options.metric || 'total_reps',
     }));
 
     return {
       data: leaderboardData,
-      total: count || 0,
+      total: count ?? (users ? users.length : 0),
     };
   }
 }
+

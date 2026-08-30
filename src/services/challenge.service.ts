@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../utils/errors.js';
+import { NotFoundError, BadRequestError, InternalServerError } from '../utils/errors.js';
 import { ChallengeRow, ChallengeParticipantRow } from '../types/database.js';
 
 export interface CreateChallengeInput {
@@ -34,7 +34,7 @@ export class ChallengeService {
       .single();
 
     if (error || !data) {
-      throw new Error(`Failed to create challenge: ${error?.message}`);
+      throw new InternalServerError(`Failed to create challenge: ${error?.message}`);
     }
 
     return data;
@@ -65,12 +65,12 @@ export class ChallengeService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to list challenges: ${error.message}`);
+      throw new InternalServerError('Failed to list challenges');
     }
 
     return {
       data: data || [],
-      total: count || 0,
+      total: count ?? (data ? data.length : 0),
     };
   }
 
@@ -131,7 +131,7 @@ export class ChallengeService {
       .single();
 
     if (error || !data) {
-      throw new Error(`Failed to join challenge: ${error?.message}`);
+      throw new InternalServerError(`Failed to join challenge: ${error?.message}`);
     }
 
     return data;
@@ -144,13 +144,16 @@ export class ChallengeService {
     challengeId: string,
     options: { page?: number; limit?: number }
   ): Promise<{ data: any[]; total: number }> {
+    // Verify challenge existence
+    await this.getChallengeById(challengeId);
+
     const page = options.page || 1;
     const limit = options.limit || 50;
     const offset = (page - 1) * limit;
 
     const { data, count, error } = await supabaseAdmin
       .from('challenge_participants')
-      .select('id, current_value, rank, joined_at, completed_at, user:public_profiles(id, display_name, avatar_url)', {
+      .select('id, current_value, joined_at, user:public_profiles(id, display_name, avatar_url)', {
         count: 'exact',
       })
       .eq('challenge_id', challengeId)
@@ -158,19 +161,20 @@ export class ChallengeService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to fetch participants: ${error.message}`);
+      throw new InternalServerError('Failed to fetch challenge participants');
     }
 
     const rankedData = (data || []).map((p, index) => ({
       rank: offset + index + 1,
       user: p.user,
-      current_value: p.current_value,
-      joined_at: p.joined_at,
+      value: p.current_value,
+      metric: 'current_value',
     }));
 
     return {
       data: rankedData,
-      total: count || 0,
+      total: count ?? (data ? data.length : 0),
     };
   }
 }
+
