@@ -191,6 +191,18 @@
 - **RLS Static Audit Result**: PASS (live test NOT AVAILABLE without live Supabase instance; migration 003 fully audited statically).
 - **Security Testing Result**: PASS — IDOR, mass assignment, privilege escalation, data leakage, credential leakage, error sanitization all verified.
 
+### Phase 16: API Documentation & Contract Sync
+- **Source-of-Truth Audit**: Cross-checked all 30 implemented routes across routes, controllers, services, Zod schemas, error middleware, and the 194 automated test assertions.
+- **Contract Synchronization**:
+  - Reconciled response envelope documentation to consistently include `{ success: true, data, meta }` and `{ success: false, error: { code, message, details } }`.
+  - Added full specification for `GET /api/v1/users/me` (private full user profile) and `GET /health` (public liveness probe).
+  - Clarified HTTP 422 `VALIDATION_ERROR` for all Zod schema validation failures.
+  - Documented exact validation bounds, nullable field semantics, and strict object restrictions across all request payloads.
+  - Documented all business logic side effects and privacy/tenant isolation rules.
+- **Automated Test Suite**: 194 tests across 23 suites — all passing, 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 
