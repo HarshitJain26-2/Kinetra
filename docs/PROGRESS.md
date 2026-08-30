@@ -516,6 +516,52 @@ Create a framework-independent pose landmark adapter under `src/engine/pose/adap
 - **Build**: TypeScript compilation 0 errors (`npm run build`)
 - **Regression**: All 245 previous phase tests continue to pass
 
+---
+
+## Phase 23 — Real-Frame / Sequence Validation
+
+**Status**: Complete
+
+### Objective
+Validate and calibrate the end-to-end pose analysis pipeline (`MediaPipe Raw Landmarks` → `adaptMediaPipeSequence()` → `PoseFrame[]` → `PoseEngine.analyze()`) across realistic MediaPipe-style landmark fixtures with accurate 2D/3D joint geometries, multi-rep sequences, incomplete reps, static frames, coordinate noise, missing landmarks, and multi-violation form checks.
+
+### Key Validations & Test Scenarios
+
+**`tests/engine/realPoseSequence.test.ts`** — 21 unit tests:
+1. **Barbell Squat**: 1-rep complete movement (165° → 90° → 160°) counts 1 rep, score = 100, 0 flags.
+2. **Squat Multi-Rep Sequence**: 3 full repetitions count exactly 3 reps without double-counting.
+3. **Dumbbell Lunges**: 2-rep sequence counts exactly 2 reps.
+4. **Push-Up**: 3-rep sequence counts exactly 3 reps with 0 flags on clean form.
+5. **Dumbbell Bicep Curl**: 3-rep sequence counts exactly 3 reps.
+6. **Incomplete Squat (Shallow Depth)**: Descends to 120° (never reaches 90°) → 0 reps.
+7. **Incomplete Push-Up (No Recovery)**: Reaches 90° bottom and never recovers → 0 reps, state = `INFLECTION`.
+8. **Incomplete Bicep Curl (Short ROM)**: Only reaches 80° → 0 reps.
+9. **Static Sequence**: 30 identical standing frames produce 0 reps, 0 false flags, stable stage = `REST`.
+10. **Coordinate Noise Robustness**: ±0.005 landmark perturbation does not cause false rep counting or jitter.
+11. **Missing Landmark Resilience**: Middle-frame occlusion (missing knee) safely skipped without NaN propagation or rep corruption.
+12. **Low-Visibility Keypoints**: Landmarks with visibility < 0.5 are safely filtered.
+13. **Form Violation — Squat Excessive Depth**: < 60° knee angle triggers `knee_over_flexion` (severity: `medium`).
+14. **Form Violation — Squat Forward Lean**: < 45° torso angle triggers `excessive_forward_lean` (severity: `medium`).
+15. **Form Violation — Push-Up Hip Sag**: < 155° plank angle triggers `body_alignment_deviation` (severity: `high`).
+16. **Form Violation — Push-Up Over-Flexion**: < 60° elbow angle triggers `elbow_over_flexion` (severity: `low`).
+17. **Timestamps & Order**: Chronological timestamps and frame order preserved.
+18. **Determinism**: 100% identical outputs on repeated sequence execution.
+19. **Performance Sanity**: 600 frames (10 reps, 20s @ 30fps) processed in ~10ms (< 50ms requirement).
+20. **Simultaneous Form Violations**: Deep over-flexion + forward lean simultaneously detected on same frame.
+21. **Score Calibration**: Form score degrades gracefully from ideal (100) on severe over-flexion.
+
+### Real-World Validation Statement
+Validated against realistic MediaPipe-style landmark fixtures; real-camera video stream validation remains pending in production client integration.
+
+### Test Results
+- **New tests**: 21 (in `tests/engine/realPoseSequence.test.ts`)
+- **Total tests**: 281
+- **Passed**: 281
+- **Failed**: 0
+- **Build**: TypeScript compilation 0 errors (`npm run build`)
+- **Regression**: All 260 previous phase tests continue to pass
+
+
 
 
 

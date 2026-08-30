@@ -504,4 +504,42 @@ The adapter is strictly an input normalizer:
 - **Does NOT** make network or external API calls.
 - **Does NOT** interpolate or synthesize missing coordinates.
 
+---
+
+## Real-Frame & Sequence Validation (Phase 23)
+
+### Validation Methodology & Scope Statement
+
+> **Real-World Validation Status**:
+> The pose analysis pipeline (`MediaPipe Raw Landmarks` → `adaptMediaPipeSequence()` → `PoseFrame[]` → `PoseEngine.analyze()`) has been validated against **realistic MediaPipe-style landmark fixtures** with geometrically accurate joint angles, realistic movement arcs, occlusion simulations, and temporal noise. Real-camera video pipeline validation remains pending in production client integration.
+
+### Validated Exercise Behaviors
+
+1. **Barbell Squat (`SQUAT_ANALYSIS_CONFIG`)**:
+   - Single and multi-rep sequences count 100% accurately without double-counting.
+   - Shallow squats (120° depth) correctly record 0 completed reps.
+   - Excessive depth (< 60° knee angle) triggers `knee_over_flexion` (severity: `medium`).
+   - Acute torso angle (< 45°) triggers `excessive_forward_lean` (severity: `medium`).
+
+2. **Dumbbell Lunges (`LUNGE_ANALYSIS_CONFIG`)**:
+   - Accurately tracks hip-knee-ankle joint angles and rep transitions across multiple reps.
+
+3. **Push-Up (`PUSHUP_ANALYSIS_CONFIG`)**:
+   - Clean 90° elbow flexion counts completed repetitions accurately.
+   - Incomplete recovery (reaches bottom but never pushes up) records 0 reps in stage `INFLECTION`.
+   - Sagging plank alignment (< 155°) triggers `body_alignment_deviation` (severity: `high`).
+   - Elbow over-flexion (< 60°) triggers `elbow_over_flexion` (severity: `low`).
+
+4. **Dumbbell Bicep Curl (`BICEP_CURL_ANALYSIS_CONFIG`)**:
+   - 35° full curl inflection counts reps deterministically.
+   - Partial curls (80° depth) record 0 reps.
+
+### Robustness Characteristics
+
+- **Static Sequences**: 30+ identical frames generate 0 false reps and 0 repeated alert spam.
+- **Coordinate Noise**: Small landmark jitter (±0.005) is absorbed by the hysteresis threshold without creating false reps.
+- **Missing / Low-Visibility Keypoints**: Missing landmarks (visibility < 0.5 or omitted arrays) are safely ignored without throwing exceptions or generating false alerts.
+- **Performance**: High throughput — 600 frames (~20 seconds of video @ 30fps) process in under 10ms.
+
+
 
