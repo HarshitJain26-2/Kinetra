@@ -2,8 +2,18 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from './app.js';
-import { env } from './config/env.js';
+import { env, validateEnv } from './config/env.js';
 import { logger } from './utils/logger.js';
+
+// Validate environment on startup
+const envValidation = validateEnv(env);
+if (!envValidation.valid) {
+  logger.error('❌ Environment validation failed on startup:');
+  for (const err of envValidation.errors) {
+    logger.error(`  - ${err}`);
+  }
+  process.exit(1);
+}
 
 const PORT = env.PORT || 5000;
 const HOST = '0.0.0.0';

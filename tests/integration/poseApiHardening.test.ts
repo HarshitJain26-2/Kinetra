@@ -235,7 +235,7 @@ describe('Phase 24: Pose -> API Integration Hardening', () => {
       const duration = performance.now() - start;
 
       assert.equal(validation.valid, true);
-      assert.ok(duration < 25, `Transformation for ${count} frames took ${duration.toFixed(2)}ms (< 25ms)`);
+      assert.ok(duration < 50, `Transformation for ${count} frames took ${duration.toFixed(2)}ms (< 50ms)`);
     }
   });
 

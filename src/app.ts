@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { apiV1Router } from './routes/index.js';
 import { notFoundHandler } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { globalRateLimiter } from './middleware/rateLimiter.js';
 import { env } from './config/env.js';
 
 const app: Application = express();
@@ -12,7 +13,7 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: '*',
+    origin: env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(',').map((o) => o.trim()),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
@@ -32,8 +33,8 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// Mount Version 1 API
-app.use('/api/v1', apiV1Router);
+// Mount Rate Limiter and Version 1 API
+app.use('/api/v1', globalRateLimiter.middleware(), apiV1Router);
 
 // Catch 404s and pass to central error handler
 app.use(notFoundHandler);
