@@ -1,11 +1,11 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, ForbiddenError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/errors.js';
 import { WorkoutRow, WorkoutExerciseRow, ExerciseRow } from '../types/database.js';
 
 export interface WorkoutExerciseInput {
   exercise_id: string;
   order_index: number;
-  target_sets: number;
+  target_sets?: number;
   target_reps?: number | null;
   target_weight_kg?: number | null;
 }
@@ -32,7 +32,35 @@ export interface FullWorkoutResponse extends WorkoutRow {
   exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow }>;
 }
 
+export const ALLOWED_WORKOUT_UPDATE_FIELDS: readonly (keyof Omit<WorkoutRow, 'id' | 'creator_id' | 'created_at' | 'updated_at'>)[] = [
+  'title',
+  'description',
+  'category',
+  'difficulty',
+  'is_public',
+] as const;
+
 export class WorkoutsService {
+  /**
+   * Helper: Validate that all exercise IDs exist in the master catalog
+   */
+  private static async validateExerciseIdsExist(exerciseIds: string[]): Promise<void> {
+    if (exerciseIds.length === 0) return;
+    const uniqueIds = [...new Set(exerciseIds)];
+    const { data: existing, error } = await supabaseAdmin
+      .from('exercises')
+      .select('id')
+      .in('id', uniqueIds);
+
+    if (error) {
+      throw new InternalServerError('Failed to validate exercise references');
+    }
+
+    if (!existing || existing.length !== uniqueIds.length) {
+      throw new BadRequestError('One or more referenced exercises do not exist in catalog', 'VALIDATION_ERROR');
+    }
+  }
+
   /**
    * Create a new workout template with attached workout_exercises
    */
@@ -41,6 +69,11 @@ export class WorkoutsService {
     input: CreateWorkoutInput
   ): Promise<FullWorkoutResponse> {
     const { exercises, ...workoutData } = input;
+
+    // Validate exercise IDs before insertion
+    if (exercises && exercises.length > 0) {
+      await this.validateExerciseIdsExist(exercises.map((e) => e.exercise_id));
+    }
 
     // 1. Insert workout template
     const { data: workout, error: workoutError } = await supabaseAdmin
@@ -57,7 +90,7 @@ export class WorkoutsService {
       .single();
 
     if (workoutError || !workout) {
-      throw new Error(`Failed to create workout: ${workoutError?.message}`);
+      throw new InternalServerError(`Failed to create workout: ${workoutError?.message}`);
     }
 
     // 2. Insert exercises if provided
@@ -80,7 +113,7 @@ export class WorkoutsService {
       if (weError) {
         // Rollback created workout on failure
         await supabaseAdmin.from('workouts').delete().eq('id', workout.id);
-        throw new Error(`Failed to insert workout exercises: ${weError.message}`);
+        throw new InternalServerError(`Failed to insert workout exercises: ${weError.message}`);
       }
 
       insertedExercises = weData || [];
@@ -98,12 +131,14 @@ export class WorkoutsService {
   static async listWorkouts(
     userId: string,
     options: { category?: string; difficulty?: string; mine?: boolean; page?: number; limit?: number }
-  ): Promise<{ data: WorkoutRow[]; total: number }> {
+  ): Promise<{ data: FullWorkoutResponse[]; total: number }> {
     const page = options.page || 1;
     const limit = options.limit || 20;
     const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin.from('workouts').select('*', { count: 'exact' });
+    let query = supabaseAdmin
+      .from('workouts')
+      .select('*, exercises:workout_exercises(*, exercise:exercises(*))', { count: 'exact' });
 
     if (options.mine) {
       query = query.eq('creator_id', userId);
@@ -123,12 +158,12 @@ export class WorkoutsService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to list workouts: ${error.message}`);
+      throw new InternalServerError('Failed to list workouts');
     }
 
     return {
-      data: data || [],
-      total: count || 0,
+      data: (data as FullWorkoutResponse[]) || [],
+      total: count ?? (data ? data.length : 0),
     };
   }
 
@@ -148,7 +183,7 @@ export class WorkoutsService {
 
     // Access check: must be owner or public
     if (!workout.is_public && workout.creator_id !== userId) {
-      throw new ForbiddenError('You do not have access to this private workout');
+      throw new ForbiddenError('Private workout owned by another user', 'FORBIDDEN');
     }
 
     // Fetch nested exercises
@@ -159,7 +194,7 @@ export class WorkoutsService {
       .order('order_index', { ascending: true });
 
     if (weError) {
-      throw new Error(`Failed to fetch workout exercises: ${weError.message}`);
+      throw new InternalServerError('Failed to fetch workout exercises');
     }
 
     return {
@@ -179,7 +214,7 @@ export class WorkoutsService {
     // 1. Verify existence & ownership
     const { data: existing, error: checkError } = await supabaseAdmin
       .from('workouts')
-      .select('creator_id')
+      .select('*')
       .eq('id', workoutId)
       .single();
 
@@ -188,34 +223,47 @@ export class WorkoutsService {
     }
 
     if (existing.creator_id !== userId) {
-      throw new ForbiddenError('Only the workout creator can modify this workout');
+      throw new ForbiddenError('Only the workout creator can modify this workout', 'FORBIDDEN');
     }
 
     const { exercises, ...workoutData } = input;
 
-    // 2. Update workout metadata if provided
-    let updatedWorkout: WorkoutRow = existing as any;
-    if (Object.keys(workoutData).length > 0) {
-      const { data: updated, error: updateError } = await supabaseAdmin
-        .from('workouts')
-        .update({
-          ...workoutData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', workoutId)
-        .select()
-        .single();
+    // Validate new exercises if provided
+    if (exercises !== undefined && exercises.length > 0) {
+      await this.validateExerciseIdsExist(exercises.map((e) => e.exercise_id));
+    }
 
-      if (updateError || !updated) {
-        throw new Error(`Failed to update workout: ${updateError?.message}`);
+    // 2. Update workout metadata if provided
+    const sanitizedUpdates: Record<string, any> = {};
+    for (const key of ALLOWED_WORKOUT_UPDATE_FIELDS) {
+      if (key in workoutData && (workoutData as any)[key] !== undefined) {
+        sanitizedUpdates[key] = (workoutData as any)[key];
       }
-      updatedWorkout = updated;
+    }
+
+    if (Object.keys(sanitizedUpdates).length > 0) {
+      sanitizedUpdates.updated_at = new Date().toISOString();
+      const { error: updateError } = await supabaseAdmin
+        .from('workouts')
+        .update(sanitizedUpdates)
+        .eq('id', workoutId);
+
+      if (updateError) {
+        throw new InternalServerError('Failed to update workout metadata');
+      }
     }
 
     // 3. Full replace of exercises if provided
     if (exercises !== undefined) {
       // Delete old exercises
-      await supabaseAdmin.from('workout_exercises').delete().eq('workout_id', workoutId);
+      const { error: deleteError } = await supabaseAdmin
+        .from('workout_exercises')
+        .delete()
+        .eq('workout_id', workoutId);
+
+      if (deleteError) {
+        throw new InternalServerError('Failed to clear previous workout exercises');
+      }
 
       // Insert new exercises
       if (exercises.length > 0) {
@@ -233,7 +281,7 @@ export class WorkoutsService {
           .insert(exerciseRows);
 
         if (insertError) {
-          throw new Error(`Failed to update workout exercises: ${insertError.message}`);
+          throw new InternalServerError('Failed to update workout exercises');
         }
       }
     }
@@ -256,12 +304,13 @@ export class WorkoutsService {
     }
 
     if (existing.creator_id !== userId) {
-      throw new ForbiddenError('Only the workout creator can delete this workout');
+      throw new ForbiddenError('Only the workout creator can delete this workout', 'FORBIDDEN');
     }
 
     const { error } = await supabaseAdmin.from('workouts').delete().eq('id', workoutId);
     if (error) {
-      throw new Error(`Failed to delete workout: ${error.message}`);
+      throw new InternalServerError('Failed to delete workout');
     }
   }
 }
+

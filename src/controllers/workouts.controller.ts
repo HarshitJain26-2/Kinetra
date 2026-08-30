@@ -22,7 +22,7 @@ export class WorkoutsController {
       const limit = req.query.limit ? Number(req.query.limit) : 20;
       const category = req.query.category as string | undefined;
       const difficulty = req.query.difficulty as string | undefined;
-      const mine = req.query.mine ? req.query.mine === 'true' : undefined;
+      const mine = req.query.mine !== undefined ? String(req.query.mine) === 'true' : undefined;
 
       const result = await WorkoutsService.listWorkouts(req.user.id, {
         page,

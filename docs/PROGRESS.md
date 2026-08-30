@@ -83,5 +83,18 @@
 - **Automated Test Suite**: Added `tests/exercises.test.ts` (10 test cases covering authentication, listing, filters, validation, detail retrieval, 404 handling, and read-only protection). Full test suite now passes 59 tests across 5 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 8: Workout APIs (CRUD & Workout-Exercises Relationship)
+- **Endpoint Implementation & Alignment**:
+  - `POST /api/v1/workouts`: Create new workout template with caller assigned strictly as `creator_id = req.user.id`; atomic insertion and linking of nested `workout_exercises`.
+  - `GET /api/v1/workouts`: List workouts with database-level ownership filtering (`creator_id = req.user.id` or `is_public = true`; or strict `creator_id` filter when `mine=true`).
+  - `GET /api/v1/workouts/:id`: Retrieve single workout with nested `workout_exercises` joined with master `exercise` details; strict privacy guard (returns 403 `FORBIDDEN` for private workouts owned by other users).
+  - `PUT /api/v1/workouts/:id`: Update workout metadata via strict `ALLOWED_WORKOUT_UPDATE_FIELDS` allowlist; full replace of `workout_exercises` on update; creator-only authorization guard (403 `FORBIDDEN`).
+  - `DELETE /api/v1/workouts/:id`: Creator-only deletion of workout and cascading cleanup of `workout_exercises` (returns 204 No Content).
+- **Ownership & Cross-User Security**: Derived workout ownership strictly from JWT claims (`req.user.id`). User A cannot view, mutate, attach exercises to, or delete User B's private workouts.
+- **Referential Integrity & Catalog Protection**: Verified that all referenced `exercise_id`s in workout creation and update payloads exist in the master `exercises` table before proceeding (invalid IDs return standard 400 `VALIDATION_ERROR`).
+- **Automated Test Suite**: Added `tests/workouts.test.ts` (15 test cases covering authentication, creation, ownership spoofing prevention, non-existent exercise reference rejection, database-level filtering, single retrieval privacy, update replacement, delete authorization, and UUID validation). Full test suite now passes 74 tests across 6 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
