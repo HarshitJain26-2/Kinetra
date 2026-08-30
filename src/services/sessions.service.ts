@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, ForbiddenError, BadRequestError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/errors.js';
 import { SessionRow, SessionExerciseRow, ExerciseRow } from '../types/database.js';
 
 export interface StartSessionInput {
@@ -49,12 +49,16 @@ export class SessionsService {
     if (input.workout_id) {
       const { data: workout, error } = await supabaseAdmin
         .from('workouts')
-        .select('id')
+        .select('id, creator_id, is_public')
         .eq('id', input.workout_id)
         .single();
 
       if (error || !workout) {
         throw new NotFoundError('Workout not found', 'WORKOUT_NOT_FOUND');
+      }
+
+      if (!workout.is_public && workout.creator_id !== userId) {
+        throw new ForbiddenError('Cannot start session for another user\'s private workout', 'FORBIDDEN');
       }
     }
 
@@ -70,7 +74,7 @@ export class SessionsService {
       .single();
 
     if (createError || !session) {
-      throw new Error(`Failed to start session: ${createError?.message}`);
+      throw new InternalServerError(`Failed to start session: ${createError?.message}`);
     }
 
     return session;
@@ -96,7 +100,7 @@ export class SessionsService {
     }
 
     if (session.user_id !== userId) {
-      throw new ForbiddenError('You do not own this session');
+      throw new ForbiddenError('You do not own this session', 'FORBIDDEN');
     }
 
     if (session.status !== 'active') {
@@ -132,7 +136,7 @@ export class SessionsService {
       .single();
 
     if (logError || !loggedExercise) {
-      throw new Error(`Failed to log session exercise: ${logError?.message}`);
+      throw new InternalServerError(`Failed to log session exercise: ${logError?.message}`);
     }
 
     return loggedExercise;
@@ -157,7 +161,7 @@ export class SessionsService {
     }
 
     if (session.user_id !== userId) {
-      throw new ForbiddenError('You do not own this session');
+      throw new ForbiddenError('You do not own this session', 'FORBIDDEN');
     }
 
     if (session.status !== 'active') {
@@ -207,7 +211,7 @@ export class SessionsService {
       .single();
 
     if (updateError || !updatedSession) {
-      throw new Error(`Failed to end session: ${updateError?.message}`);
+      throw new InternalServerError(`Failed to end session: ${updateError?.message}`);
     }
 
     return {
@@ -246,12 +250,12 @@ export class SessionsService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error(`Failed to list sessions: ${error.message}`);
+      throw new InternalServerError('Failed to list sessions');
     }
 
     return {
       data: data || [],
-      total: count || 0,
+      total: count ?? (data ? data.length : 0),
     };
   }
 
@@ -270,7 +274,7 @@ export class SessionsService {
     }
 
     if (session.user_id !== userId) {
-      throw new ForbiddenError('You do not own this session');
+      throw new ForbiddenError('You do not own this session', 'FORBIDDEN');
     }
 
     const { data: exercises, error: exError } = await supabaseAdmin
@@ -280,7 +284,7 @@ export class SessionsService {
       .order('recorded_at', { ascending: true });
 
     if (exError) {
-      throw new Error(`Failed to fetch session exercises: ${exError.message}`);
+      throw new InternalServerError('Failed to fetch session exercises');
     }
 
     return {
@@ -289,3 +293,4 @@ export class SessionsService {
     };
   }
 }
+

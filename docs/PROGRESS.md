@@ -95,6 +95,19 @@
 - **Automated Test Suite**: Added `tests/workouts.test.ts` (15 test cases covering authentication, creation, ownership spoofing prevention, non-existent exercise reference rejection, database-level filtering, single retrieval privacy, update replacement, delete authorization, and UUID validation). Full test suite now passes 74 tests across 6 suites with 0 failures (`npm test`).
 - **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
 
+### Phase 9: Session APIs (Execution Tracking & Performance Metrics)
+- **Endpoint Implementation & Alignment**:
+  - `POST /api/v1/sessions/start`: Start active workout session (freestyle or referencing an existing public/user-owned workout); guards against concurrent active sessions (400 `SESSION_ALREADY_ACTIVE`).
+  - `POST /api/v1/sessions/:id/log-exercise`: Manual set recording with validation for positive set numbers, reps, weights, durations, bounded form scores (0–100), and exercise catalog existence checks.
+  - `POST /api/v1/sessions/:id/end`: End active session; computes accurate elapsed `duration_sec`, estimated calories burned (`calories_est`), and aggregate summary metrics (`total_sets`, `total_reps`, `avg_form_score`, `injury_flags_raised`).
+  - `GET /api/v1/sessions`: List user's past sessions with database-level `user_id` filtering and optional `status` filter.
+  - `GET /api/v1/sessions/:id`: Retrieve single session with nested `session_exercises` joined with `exercises` catalog metadata; owner-only privacy guard (403 `FORBIDDEN`).
+- **Ownership & Workout Relationship Integrity**: Session ownership derived strictly from JWT `req.user.id`. Starting a session referencing another user's private workout is strictly forbidden (403 `FORBIDDEN`).
+- **AI Pose Analysis Pipeline Foundation**: Established relational tracking between `sessions`, `session_exercises`, and `exercises` ensuring downstream AI pose analysis (`POST /pose-analysis`) seamlessly logs into `session_exercises`.
+- **Automated Test Suite**: Added `tests/sessions.test.ts` (13 test cases covering authentication, session lifecycle, concurrent active session guard, private workout reference checks, manual exercise logging, end-session computation, list filtering, detail retrieval, and authorization boundaries). Full test suite now passes 87 tests across 7 suites with 0 failures (`npm test`).
+- **Build Verification**: TypeScript compilation passed with 0 errors (`npm run build`).
+
+
 
 
 
