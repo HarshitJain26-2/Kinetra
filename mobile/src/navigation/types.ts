@@ -1,5 +1,5 @@
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { WorkoutItem } from '../api/client';
+import { WorkoutItem, MealPlanItem } from '../api/client';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -18,6 +18,14 @@ export type RootStackParamList = {
     workout?: WorkoutItem;
     exercise?: { id?: string; name?: string };
     setNumber?: number;
+  };
+  Nutrition: undefined;
+  MealRecommendations: {
+    initialDietType?: string;
+  } | undefined;
+  MealDetails: {
+    meal: MealPlanItem;
+    dietType?: string;
   };
 };
 

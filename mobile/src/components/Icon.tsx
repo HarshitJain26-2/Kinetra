@@ -35,7 +35,10 @@ export type IconName =
   | 'scale'
   | 'calendar'
   | 'wifi-off'
-  | 'person';
+  | 'person'
+  | 'cutlery'
+  | 'utensils'
+  | 'ribbon';
 
 interface IconProps {
   name: IconName;
@@ -237,6 +240,19 @@ export const Icon: React.FC<IconProps> = ({
         return (
           <View style={[styles.center, { width: size, height: size }]}>
             <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>📡</Text>
+          </View>
+        );
+      case 'cutlery':
+      case 'utensils':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🍴</Text>
+          </View>
+        );
+      case 'ribbon':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🎗️</Text>
           </View>
         );
       default:

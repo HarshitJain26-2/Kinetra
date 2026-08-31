@@ -473,5 +473,107 @@ export const apiClient = {
   ): Promise<any> {
     return apiClient.post('/api/v1/pose-analysis', payload, { token });
   },
+
+  async getNutritionProfile(token?: string | null): Promise<NutritionProfileData> {
+    return apiClient.get<NutritionProfileData>('/api/v1/nutrition/profile', { token });
+  },
+
+  async upsertNutritionProfile(
+    payload: Partial<Omit<NutritionProfileData, 'id' | 'user_id' | 'created_at' | 'updated_at'>>,
+    token?: string | null
+  ): Promise<NutritionProfileData> {
+    return apiClient.put<NutritionProfileData>('/api/v1/nutrition/profile', payload, { token });
+  },
+
+  async getNutritionRecommendations(
+    options: { num_meals?: number; date?: string } = {},
+    token?: string | null
+  ): Promise<NutritionRecommendResponse> {
+    return apiClient.post<NutritionRecommendResponse>('/api/v1/nutrition/recommend', options, { token });
+  },
 };
+
+export type NutritionGoal = 'lose_weight' | 'maintain' | 'gain_muscle' | 'general_health';
+export type DietType = 'omnivore' | 'vegetarian' | 'vegan' | 'keto' | 'paleo' | 'custom';
+
+export interface MealPlanItem {
+  name: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  items: string[];
+  timing?: 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'pre_workout' | 'post_workout';
+  prep_time_min?: number;
+  description?: string;
+}
+
+export interface GeneratedMealPlan {
+  date: string;
+  total_calories: number;
+  diet_type: string;
+  goal: string;
+  meals: MealPlanItem[];
+}
+
+export interface NutritionProfileData {
+  id: string;
+  user_id: string;
+  goal: NutritionGoal;
+  diet_type: DietType;
+  allergies: string[] | null;
+  daily_cal_target: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  meal_plan_json: GeneratedMealPlan | null;
+  updated_at?: string;
+  created_at?: string;
+}
+
+export interface NutritionRecommendResponse {
+  saved: boolean;
+  meal_plan: GeneratedMealPlan;
+}
+
+export const computeBMI = (
+  height_cm?: number | null,
+  weight_kg?: number | null
+): { bmi: number | null; category: 'underweight' | 'normal' | 'overweight' | 'obese' | 'unknown' } => {
+  if (
+    height_cm === null ||
+    height_cm === undefined ||
+    weight_kg === null ||
+    weight_kg === undefined ||
+    !Number.isFinite(height_cm) ||
+    !Number.isFinite(weight_kg) ||
+    height_cm <= 0 ||
+    weight_kg <= 0
+  ) {
+    return { bmi: null, category: 'unknown' };
+  }
+
+  const height_m = height_cm / 100;
+  const rawBMI = weight_kg / (height_m * height_m);
+
+  if (!Number.isFinite(rawBMI) || Number.isNaN(rawBMI) || rawBMI <= 0) {
+    return { bmi: null, category: 'unknown' };
+  }
+
+  const bmi = Math.round(rawBMI * 10) / 10;
+  let category: 'underweight' | 'normal' | 'overweight' | 'obese' = 'normal';
+
+  if (bmi < 18.5) {
+    category = 'underweight';
+  } else if (bmi < 25.0) {
+    category = 'normal';
+  } else if (bmi < 30.0) {
+    category = 'overweight';
+  } else {
+    category = 'obese';
+  }
+
+  return { bmi, category };
+};
+
 

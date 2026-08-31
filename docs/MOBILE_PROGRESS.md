@@ -219,4 +219,79 @@
 - **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` not present in `mobile/`
 - **Data Integrity**: Zero fabricated profile/analytics values; all missing metrics gracefully display `--` or empty state
 
+---
+
+## Phase 34 — Nutrition UI & Personalized Nutrition Experience
+
+**Status**: Complete  
+**Platform**: React Native / Expo SDK 51 (TypeScript)  
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)
+
+### Features Delivered
+
+1. **Nutrition Dashboard (`NutritionScreen.tsx`, Stitch Screen 1)**:
+   - Header with Kinetra gold wordmark, back navigation, and settings trigger.
+   - Dynamic Goal Phase Banner (`Muscle Hypertrophy Phase`, `Metabolic Fat Loss Phase`, `Athletic Conditioning Phase`).
+   - **Daily Intake Card**: Consumed / Target calories, remaining calories badge (`750 KCAL REMAINING`), and circular SVG `CalorieDial` with central `OPTIMAL` status label.
+   - **Macronutrients Card**: Linear `MacroProgressBar` components for Protein, Carbs, and Fats with gold target fills.
+   - **Curated For You**: Real meal recommendations with meal timing badges (`POST-WORKOUT`, `LUNCH`, `DINNER`), prep time, calorie badges, and macro summaries.
+   - `+ Log Custom Meal` card and `VIEW ALL →` link to the recommendations screen.
+2. **Diagnostic & Telemetry States (Stitch Image 2)**:
+   - **State 1: Processing Data**: Skeleton loading indicators.
+   - **State 2: Awaiting Profile (Insufficient Data)**: Fork & knife icon box, "Insufficient Data" message, `CALORIES --`, `PROTEIN --`, and gold `COMPLETE PROFILE` CTA button.
+   - **State 3: Connection Interrupted (Telemetry Failed)**: Crimson network icon, "Telemetry Failed" message, and gold `RETRY CONNECTION ⟳` action button.
+3. **Meal Recommendations Screen (`MealRecommendationsScreen.tsx`, Stitch Screen 2)**:
+   - Filter pills: `All`, `High Protein`, `Keto`, `Vegan` with gold active indicator.
+   - Large food recommendation cards with thumbnails, timing badges, item descriptions, and 3-macro pill tags (`PROTEIN`, `CARBS`, `FATS`).
+4. **Meal Details Breakdown Screen (`MealDetailsScreen.tsx`, Stitch Screen 3)**:
+   - Hero artwork frame with timing tag and prep time badge.
+   - Title and calorie highlight pill.
+   - 4-Column Macro Grid: `PROTEIN`, `CARBS`, `FAT`, `FIBER`.
+   - **Technical Assembly**: Structured ingredients and quantities list.
+   - **Elite Compatibility**: Verified badges (`✔ High Protein Index`, `✔ 100% Plant-Based`, `✔ Ketogenic Macro Ratio`, `✔ Bio-Available Fuel`).
+   - **Caloric Density Advisory**: Warning card for meals >= 700 kcal.
+   - Bottom CTA: `🍴 PREPARE MEAL` action.
+5. **Home Dashboard Integration**:
+   - Added Precision Nutrition shortcut command card to `HomeScreen.tsx` for one-tap access.
+6. **Backend Integration**:
+   - Connected to `GET /api/v1/nutrition/profile`, `PUT /api/v1/nutrition/profile`, `POST /api/v1/nutrition/recommend`.
+   - Added `computeBMI(height_cm, weight_kg)` helper mirroring backend `NutritionEngine.calculateBMI`.
+
+### New Files
+
+| File | Purpose |
+|---|---|
+| `mobile/src/screens/NutritionScreen.tsx` | Main Nutrition Dashboard & Diagnostic States |
+| `mobile/src/screens/MealRecommendationsScreen.tsx` | Recommendations list with diet filter pills |
+| `mobile/src/screens/MealDetailsScreen.tsx` | Meal details, technical assembly, and compatibility badges |
+| `mobile/src/components/CalorieDial.tsx` | Circular SVG progress dial |
+| `mobile/src/components/MacroProgressBar.tsx` | Linear macro progress bar |
+| `mobile/src/components/MealCard.tsx` | Reusable meal recommendation card (compact & full) |
+| `mobile/tests/nutritionUI.test.ts` | Phase 34 unit test suite |
+
+### Modified Files
+
+| File | Change |
+|---|---|
+| `mobile/src/api/client.ts` | Added nutrition types, `computeBMI`, `getNutritionProfile`, `upsertNutritionProfile`, `getNutritionRecommendations` |
+| `mobile/src/components/Icon.tsx` | Added `cutlery`, `utensils`, `ribbon` glyphs |
+| `mobile/src/navigation/types.ts` | Added `Nutrition`, `MealRecommendations`, `MealDetails` to `RootStackParamList` |
+| `mobile/src/navigation/RootNavigator.tsx` | Registered `NutritionScreen`, `MealRecommendationsScreen`, `MealDetailsScreen` |
+| `mobile/src/screens/HomeScreen.tsx` | Added Precision Nutrition shortcut card |
+
+### Verification Results
+
+- **Mobile Tests**: **92 / 92 PASS** (`npm test` in `mobile/`)
+  - Phase 34 Nutrition UI & Engine Tests: 11 / 11 PASS
+  - Phase 33 Profile & Settings Tests: 11 / 11 PASS
+  - Phase 32 Stats & Analytics Tests: 7 / 7 PASS
+  - Phase 31 Real Device ML: 15 / 15 PASS
+  - All Prior Phases: 48 / 48 PASS
+- **Mobile TypeScript**: **PASS** (0 errors, `npm run typecheck`)
+- **Expo Bundler Verification**: **PASS** (Web 520 modules, iOS 890 modules, Android 889 modules exported cleanly)
+- **Backend Regression**: **294 / 294 PASS** (`npm test` in root)
+- **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` not present in `mobile/`
+- **Data Integrity**: Zero fabricated nutrition numbers; all missing metrics gracefully display `--` or "Insufficient Data" state
+
+
 

@@ -10,6 +10,9 @@ import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { WorkoutDetailsScreen } from '../screens/WorkoutDetailsScreen';
 import { LiveWorkoutScreen } from '../screens/LiveWorkoutScreen';
+import { NutritionScreen } from '../screens/NutritionScreen';
+import { MealRecommendationsScreen } from '../screens/MealRecommendationsScreen';
+import { MealDetailsScreen } from '../screens/MealDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -62,6 +65,27 @@ export const RootNavigator: React.FC = () => {
           options={{
             animation: 'slide_from_bottom',
             gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="Nutrition"
+          component={NutritionScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="MealRecommendations"
+          component={MealRecommendationsScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="MealDetails"
+          component={MealDetailsScreen}
+          options={{
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>

@@ -325,6 +325,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </ScrollView>
           )}
         </View>
+
+        {/* 6. NUTRITION COMMAND CARD */}
+        <View style={styles.nutritionShortcutSection}>
+          <TouchableOpacity
+            style={styles.nutritionShortcutCard}
+            onPress={() => navigation?.navigate && navigation.navigate('Nutrition')}
+            testID="home-nutrition-shortcut-card"
+            accessibilityRole="button"
+          >
+            <View style={styles.nutritionShortcutLeft}>
+              <View style={styles.nutritionIconCircle}>
+                <Icon name="cutlery" size={18} color={colors.gold} />
+              </View>
+              <View style={styles.nutritionShortcutText}>
+                <Text style={styles.nutritionShortcutTitle}>Precision Nutrition</Text>
+                <Text style={styles.nutritionShortcutSubtitle}>
+                  Caloric Targets • Biometrics • Curated Fuel
+                </Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.gold} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -575,6 +598,51 @@ const styles = StyleSheet.create({
   retryButtonText: {
     ...typography.labelCaps,
     color: colors.gold,
+    fontSize: 11,
+  },
+  nutritionShortcutSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  nutritionShortcutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceDim,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+  },
+  nutritionShortcutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nutritionIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceBright,
+    borderWidth: 1,
+    borderColor: colors.borderGold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  nutritionShortcutText: {
+    flex: 1,
+  },
+  nutritionShortcutTitle: {
+    ...typography.bodyMd,
+    fontWeight: '700',
+    color: colors.primaryText,
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  nutritionShortcutSubtitle: {
+    ...typography.caption,
+    color: colors.secondaryText,
     fontSize: 11,
   },
 });
