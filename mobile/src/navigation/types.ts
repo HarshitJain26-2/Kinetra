@@ -1,4 +1,5 @@
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { WorkoutItem } from '../api/client';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -8,6 +9,10 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   Main: undefined;
   HomePlaceholder?: undefined;
+  WorkoutDetails: {
+    workoutId: string;
+    initialWorkout?: WorkoutItem;
+  };
 };
 
 export type MainTabParamList = {

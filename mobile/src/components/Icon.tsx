@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextStyle, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from '../theme';
 
 export type IconName =
@@ -16,7 +16,14 @@ export type IconName =
   | 'pulse'
   | 'shield'
   | 'chevron-right'
-  | 'view-all';
+  | 'view-all'
+  | 'back'
+  | 'bookmark'
+  | 'bookmark-outline'
+  | 'play'
+  | 'warning'
+  | 'retry'
+  | 'check';
 
 interface IconProps {
   name: IconName;
@@ -109,6 +116,48 @@ export const Icon: React.FC<IconProps> = ({
         return (
           <View style={[styles.center, { width: size, height: size }]}>
             <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>›</Text>
+          </View>
+        );
+      case 'back':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.9, color, lineHeight: size, fontWeight: '700' }}>←</Text>
+          </View>
+        );
+      case 'bookmark':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🔖</Text>
+          </View>
+        );
+      case 'bookmark-outline':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>⚐</Text>
+          </View>
+        );
+      case 'play':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.7, color, lineHeight: size, marginLeft: 2 }}>▶</Text>
+          </View>
+        );
+      case 'warning':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size, fontWeight: '800' }}>!</Text>
+          </View>
+        );
+      case 'retry':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>⟳</Text>
+          </View>
+        );
+      case 'check':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>✓</Text>
           </View>
         );
       default:

@@ -103,12 +103,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, [loadDashboardData]);
 
   const handleStartSession = (workout?: WorkoutItem) => {
-    const title = workout?.title || 'Tactical Strength';
-    Alert.alert(
-      'Workout Session',
-      `Session "${title}" will launch the AI Vision Coach in Phase 30.`,
-      [{ text: 'Got it', style: 'default' }]
-    );
+    if (workout && navigation?.navigate) {
+      navigation.navigate('WorkoutDetails', {
+        workoutId: workout.id,
+        initialWorkout: workout,
+      });
+    } else if (navigation?.navigate) {
+      navigation.navigate('Explore');
+    }
   };
 
   const handleNotificationPress = () => {

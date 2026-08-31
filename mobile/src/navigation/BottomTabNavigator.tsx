@@ -26,16 +26,33 @@ const TABS: TabItemConfig[] = [
   { name: 'Profile', label: 'PROFILE', icon: 'profile', testID: 'tab-profile' },
 ];
 
-export const BottomTabNavigator: React.FC = () => {
+interface BottomTabNavigatorProps {
+  navigation?: any;
+}
+
+export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigation: rootNavigation }) => {
   const [activeTab, setActiveTab] = useState<MainTabName>('Home');
   const insets = useSafeAreaInsets();
+
+  const combinedNavigation = {
+    navigate: (screen: string, params?: any) => {
+      if (TABS.some((t) => t.name === screen)) {
+        setActiveTab(screen as MainTabName);
+      } else if (rootNavigation?.navigate) {
+        rootNavigation.navigate(screen, params);
+      }
+    },
+    goBack: () => {
+      if (rootNavigation?.goBack) rootNavigation.goBack();
+    },
+  };
 
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'Home':
-        return <HomeScreen navigation={{ navigate: (screen: MainTabName) => setActiveTab(screen) }} />;
+        return <HomeScreen navigation={combinedNavigation} />;
       case 'Explore':
-        return <ExploreScreen />;
+        return <ExploreScreen navigation={combinedNavigation} />;
       case 'Train':
         return <TrainScreen />;
       case 'Stats':
@@ -43,7 +60,7 @@ export const BottomTabNavigator: React.FC = () => {
       case 'Profile':
         return <ProfileScreen />;
       default:
-        return <HomeScreen navigation={{ navigate: (screen: MainTabName) => setActiveTab(screen) }} />;
+        return <HomeScreen navigation={combinedNavigation} />;
     }
   };
 

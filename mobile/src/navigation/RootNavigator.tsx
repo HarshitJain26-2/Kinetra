@@ -8,6 +8,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
+import { WorkoutDetailsScreen } from '../screens/WorkoutDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -47,6 +48,13 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="Main" component={BottomTabNavigator} />
         <Stack.Screen name="HomePlaceholder" component={BottomTabNavigator} />
+        <Stack.Screen
+          name="WorkoutDetails"
+          component={WorkoutDetailsScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

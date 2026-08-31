@@ -29,6 +29,7 @@ export interface UserProfileData {
 
 export interface WorkoutExerciseItem {
   id?: string;
+  workout_id?: string;
   exercise_id: string;
   order_index: number;
   target_sets: number;
@@ -37,6 +38,14 @@ export interface WorkoutExerciseItem {
   rest_seconds?: number | null;
   name?: string;
   category?: string;
+  exercise?: {
+    id: string;
+    name: string;
+    category?: string;
+    target_muscle_group?: string;
+    equipment?: string;
+    description?: string;
+  };
 }
 
 export interface WorkoutItem {
@@ -44,8 +53,8 @@ export interface WorkoutItem {
   creator_id: string;
   title: string;
   description?: string | null;
-  category: 'strength' | 'hypertrophy' | 'endurance' | 'mobility' | 'hiit' | 'rehab' | 'other';
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'elite';
+  category: 'strength' | 'hypertrophy' | 'endurance' | 'mobility' | 'hiit' | 'rehab' | 'other' | string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'elite' | string;
   is_public: boolean;
   estimated_duration_min?: number | null;
   exercises?: WorkoutExerciseItem[];
@@ -207,5 +216,9 @@ export const apiClient = {
       query: filters as Record<string, string | number | boolean | undefined>,
       token,
     });
+  },
+
+  async getWorkoutById(workoutId: string, token?: string | null): Promise<WorkoutItem> {
+    return apiClient.get<WorkoutItem>(`/api/v1/workouts/${workoutId}`, { token });
   },
 };

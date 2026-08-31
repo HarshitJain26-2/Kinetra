@@ -8,17 +8,19 @@
 
 ---
 
-### 1. Architecture Overview (Phase 27)
-
-The mobile client is structured as a modular Expo application located in `/mobile`, isolated from the backend API server.
-
----
-
 ## Phase 28 — Home Dashboard & Mobile Navigation
 
 **Status**: Complete  
 **Platform**: React Native / Expo (TypeScript)  
 **Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)
+
+---
+
+## Phase 29 — Workout Library & Workout Details
+
+**Status**: Complete  
+**Platform**: React Native / Expo (TypeScript)  
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Dark Surface `#111315`)
 
 ---
 
@@ -31,34 +33,34 @@ mobile/
 ├── package.json                  # Dependencies & scripts (Expo, React Navigation, Supabase)
 ├── tsconfig.json                 # TypeScript compiler configuration
 ├── assets/
-│   └── images/                   # Stitch visual reference assets & workout artwork
+│   └── images/                   # Stitch visual reference assets & workout photography
 └── src/
     ├── api/
-    │   └── client.ts             # Typed secure API client attaching Bearer JWT, safe envelope parser
+    │   └── client.ts             # Typed API client (getWorkouts, getWorkoutById, getCurrentUserProfile)
     ├── config/
     │   └── supabase.ts           # Supabase Client SDK (Anon/Public Client Key only)
     ├── context/
     │   └── AuthContext.tsx        # React context for user sessions, auth actions & errors
     ├── navigation/
-    │   ├── types.ts              # RootStackParamList & MainTabParamList definitions
-    │   ├── RootNavigator.tsx      # Native stack navigator connecting auth & main tabs
-    │   └── BottomTabNavigator.tsx # 5-tab luxury dark bottom navigation (Home, Explore, Train, Stats, Profile)
+    │   ├── types.ts              # RootStackParamList (with WorkoutDetails) & MainTabParamList
+    │   ├── RootNavigator.tsx      # Native stack navigator connecting auth, tabs & WorkoutDetails
+    │   └── BottomTabNavigator.tsx # 5-tab luxury dark bottom navigation (Home, Explore/Workouts, Train, Stats, Profile)
     ├── theme/
     │   ├── colors.ts             # Exact color palette tokens
     │   ├── spacing.ts            # 8px spatial grid & borderRadius tokens
     │   ├── typography.ts         # Luxury serif headers & Inter UI styles
     │   └── index.ts              # Unified theme export
     ├── components/
-    │   ├── Icon.tsx              # Vector-styled icon primitives (home, explore, train, stats, bell, flame, etc.)
+    │   ├── Icon.tsx              # Vector icon primitives (home, explore, train, back, bookmark, play, warning, etc.)
     │   ├── MetricCard.tsx        # Form Score, Active Mins, and Calories metric card widgets
-    │   ├── WorkoutCard.tsx       # Curated workout card for horizontal carousel
+    │   ├── WorkoutCard.tsx       # Horizontal carousel workout card
+    │   ├── WorkoutListCard.tsx   # Full-width vertical workout card for library catalog
     │   ├── KinetraButton.tsx     # Primary (Solid Gold), Secondary (Outline), DarkOutline, Text
     │   ├── KinetraInput.tsx      # High-contrast luxury inputs with icons & error highlights
     │   ├── PasswordInput.tsx     # Secure input with show/hide eye toggle & lock icon
     │   ├── ScreenBackground.tsx  # Fullscreen image background with dark gradient overlay
     │   ├── BrandLogo.tsx         # Kinetra serif wordmark & metallic emblem badge
     │   ├── ScreenHeader.tsx      # Header with back navigation and centered branding
-    │   ├── AuthCard.tsx          # Glassmorphism container with optional gold indicator bar
     │   ├── LoadingIndicator.tsx  # Gold spinner
     │   └── InlineError.tsx       # Crimson error notification banner
     └── screens/
@@ -68,7 +70,8 @@ mobile/
         ├── SignUpScreen.tsx      # Sign Up screen
         ├── ForgotPasswordScreen.tsx # Password recovery screen
         ├── HomeScreen.tsx        # Phase 28 Main Home Dashboard
-        ├── ExploreScreen.tsx     # Phase 29 Explore & Workout Library placeholder
+        ├── ExploreScreen.tsx     # Phase 29 Full Workouts Library & Category Filter
+        ├── WorkoutDetailsScreen.tsx # Phase 29 Full Workout Details & Circuit Protocol
         ├── TrainScreen.tsx       # Phase 30 Live Vision Training placeholder
         ├── StatsScreen.tsx       # Phase 32 Analytics & Progress placeholder
         └── ProfileScreen.tsx     # Phase 33 Profile & Sign Out placeholder
@@ -76,82 +79,72 @@ mobile/
 
 ---
 
-### 2. Navigation Architecture & Authenticated Flow
+### 2. Navigation Architecture
 
 ```mermaid
 graph TD
-    A[Unauthenticated Flow] -->|Sign In / Sign Up| B[Main Authenticated Flow]
-    B --> C[BottomTabNavigator]
-    C -->|Tab 1| D[HomeScreen - Fully Implemented]
-    C -->|Tab 2| E[ExploreScreen - Phase 29 Placeholder]
-    C -->|Tab 3| F[TrainScreen - Phase 30 Placeholder]
-    C -->|Tab 4| G[StatsScreen - Phase 32 Placeholder]
-    C -->|Tab 5| H[ProfileScreen - Phase 33 Placeholder & Sign Out]
-    H -->|SIGN OUT| A
+    A[RootNavigator] --> B[BottomTabNavigator]
+    B -->|Home Tab| C[HomeScreen]
+    B -->|Explore Tab| D[ExploreScreen - Workout Library]
+    C -->|Tap Curated Card / Start Session| E[WorkoutDetailsScreen]
+    D -->|Tap Workout Card| E
+    E -->|Back Arrow| D
+    E -->|START WORKOUT ▶| F[Phase 30 Live Vision Launch Notice]
 ```
-
-- **Bottom Tab Navigation Bar**:
-  - `HOME`: Active Gold `#D9B83F` state rendering the full Home Dashboard.
-  - `EXPLORE`: Navigates to Explore/Library placeholder screen.
-  - `TRAIN`: Navigates to Live Vision Training placeholder screen.
-  - `STATS`: Navigates to Analytics & Progress placeholder screen.
-  - `PROFILE`: Displays authenticated user tier, email, display name, and functional `SIGN OUT` action.
 
 ---
 
-### 3. Home Dashboard Sections & Features
+### 3. Screen Implementations
 
-1. **Header & Branding**:
-   - `KINETRA` uppercase serif wordmark with luxury letter-spacing.
-   - Notification button with alert telemetry modal.
-2. **Personalized Athlete Greeting**:
-   - Dynamic time-based greeting (`Good Morning`, `Good Afternoon`, `Good Evening`).
-   - Authenticated user name extracted from `GET /api/v1/users/me` -> `user_metadata.full_name` -> email prefix -> fallback (`Elite`).
-   - Profile avatar button with gold border.
-3. **Daily Focus Hero Card**:
-   - Background equipment artwork with dark overlay (`rgba(5, 6, 7, 0.78)`).
-   - `⚡ DAILY FOCUS` gold badge and `AI OPTIMIZED` badge.
-   - Workout title, subtitle focus target, duration (`45 Min`), intensity chip.
-   - Primary CTA: `START SESSION` (Gold button with press telemetry).
-4. **Quick Stats Widgets (No Fabricated Data Rule)**:
-   - `FORM SCORE`: Shield icon, score value, gold progress bar.
-   - `ACTIVE MINS`: Pulse icon, active minutes value, "This Week", segmented progress track.
-   - `CALORIES`: Crimson flame icon, burned kcal value, segmented indicator.
-   - *Graceful fallback*: When metrics are unpopulated from the backend, displays `"--"` without fabricating fake user metrics.
-5. **Curated For You (Workout Carousel)**:
-   - Live backend integration with `GET /api/v1/workouts`.
-   - Horizontally scrollable carousel with duration pills, category badges, titles, and exercise counts.
-   - Safe state handling: loading spinner, error with inline retry action, empty state with refresh action.
-   - Pull-to-refresh (`RefreshControl`) for live synchronization.
+1. **Workouts Library (`ExploreScreen.tsx`)**:
+   - Header with user avatar profile shortcut, centered uppercase serif `WORKOUTS` wordmark, and bell notification button.
+   - Horizontal category filter pills: `All`, `Strength`, `Mobility`, `Conditioning`, `Recovery` with active gold highlights.
+   - Vertical workout feed using `WorkoutListCard` with photography, intensity/live badges, category label, serif title, description preview, duration pill (`⏱ 45 MIN`), and gold circular play button (`▶`).
+   - State handling matching Stitch design:
+     - Sleek loading indicators.
+     - Empty state with filter reset action.
+     - Exact Stitch **"Connection Interrupted"** error state card with warning circle and `⟳ RETRY` button.
+     - Native pull-to-refresh (`RefreshControl`).
+
+2. **Workout Details (`WorkoutDetailsScreen.tsx`)**:
+   - Hero photography with dark gradient fade.
+   - Top navigation overlay with rounded dark back (`←`) and bookmark (`🔖`) buttons.
+   - Category label (`STRENGTH & POWER`), bold serif title (`Tactical Strength`), duration (`⏱ 45 Min`) and difficulty (`⚡ Advanced`) chips.
+   - Description card with luxury typography.
+   - **Circuit Protocol** exercise list displaying exercise thumbnail, exercise name, target muscle/movement (`Primary Posterior Chain`), sets badge (`4 Sets`), and reps count (`12 Reps`).
+   - Sticky bottom full-width solid gold `START WORKOUT ▶` button.
+   - **Safety Invariant**: Camera, MediaPipe, and pose tracking are not executed in Phase 29 (informative telemetry prompt provided).
 
 ---
 
 ### 4. API Integration & Security Invariants
 
-- **Base URL**: Configured via `EXPO_PUBLIC_API_BASE_URL` (defaults to local backend).
-- **Authentication**: Automatically attaches `Authorization: Bearer <Supabase Access Token>` to all requests.
-- **Envelope Parsing**: Safely unwraps `{ success: true, data, meta }` and handles typed `ApiError` responses.
-- **Zero Token Leakage**: Tokens and sensitive credentials are never logged or exposed to client error messages.
-- **No Service Role Key**: Strictly audited to guarantee `SUPABASE_SERVICE_ROLE_KEY` is not present in mobile code.
+- **Endpoints**:
+  - `GET /api/v1/workouts`: List workouts with category filtering and pagination.
+  - `GET /api/v1/workouts/:id`: Retrieve complete workout details with joined `workout_exercises` and `exercises` catalog entries.
+- **JWT Authorization**: All requests include `Authorization: Bearer <Supabase JWT>`.
+- **Zero Token Leakage**: Tokens and credentials are never logged to console or exposed in error details.
+- **No Service Role Key**: Audited against mobile client codebase.
 
 ---
 
 ### 5. Automated Verification Results
 
-- **Mobile Unit & Security Suite**: 37 / 37 PASS (`mobile/package.json` -> `npm test`)
+- **Mobile Unit & Security Tests**: **48 / 48 PASS** (`mobile/package.json` -> `npm test`)
+  - Workout Library & Details (Phase 29): 11 / 11 PASS
   - API Client & Token Security: 5 / 5 PASS
   - Auth Error Sanitization: 5 / 5 PASS
   - Home Dashboard & Personalization: 12 / 12 PASS
   - Mobile Security & Secret Leak Prevention: 2 / 2 PASS
   - Theme Tokens & 8px Grid: 3 / 3 PASS
   - Form Validators: 10 / 10 PASS
-- **Mobile TypeScript Verification**: 0 errors (`npm run typecheck`)
-- **Expo Bundling / Export Verification**: PASS (790 modules bundled for iOS & Android, 0 errors)
-- **Backend Regression Suite**: 294 / 294 PASS (`npm test` in root)
+- **Mobile TypeScript Verification**: **PASS** (0 errors, `npm run typecheck`)
+- **Expo Export & Bundler Verification**: **PASS** (792 iOS modules, 791 Android modules bundled, 0 errors)
+- **Backend Regression Suite**: **294 / 294 PASS** (`npm test` in root)
 
 ---
 
 ### 6. Known Limitations & Next Steps
 
-- **Workouts Detail View**: Tapping a curated workout card triggers the session preview dialog; full detail screen navigation is part of Phase 29.
-- **Next Phase**: **Phase 29 — Workout Library & Workout Details** (Full catalog exploration, filtering by category/difficulty, and workout detail view).
+- **Live Vision Coaching Engine**: Tapping `START WORKOUT ▶` alerts that live camera streaming, MediaPipe landmarking, and rep telemetry will be implemented in Phase 30.
+- **Next Phase**: **Phase 30 — Live Vision Coaching & Pose Tracking Interface**.
