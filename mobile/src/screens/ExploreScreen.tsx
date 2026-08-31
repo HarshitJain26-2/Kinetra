@@ -13,9 +13,8 @@ import { colors, spacing, borderRadius, typography } from '../theme';
 import { Icon } from '../components/Icon';
 import { WorkoutListCard } from '../components/WorkoutListCard';
 import { LoadingIndicator } from '../components/LoadingIndicator';
-import { KinetraButton } from '../components/KinetraButton';
 import { apiClient, WorkoutItem } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+
 
 interface CategoryFilterOption {
   id: string;
@@ -36,7 +35,6 @@ interface ExploreScreenProps {
 }
 
 export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
-  const { user } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [workouts, setWorkouts] = useState<WorkoutItem[]>([]);
