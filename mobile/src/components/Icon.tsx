@@ -23,7 +23,19 @@ export type IconName =
   | 'play'
   | 'warning'
   | 'retry'
-  | 'check';
+  | 'check'
+  | 'gear'
+  | 'lock'
+  | 'trophy'
+  | 'history'
+  | 'diamond'
+  | 'sign-out'
+  | 'info'
+  | 'help'
+  | 'scale'
+  | 'calendar'
+  | 'wifi-off'
+  | 'person';
 
 interface IconProps {
   name: IconName;
@@ -65,6 +77,7 @@ export const Icon: React.FC<IconProps> = ({
           </View>
         );
       case 'profile':
+      case 'person':
         return (
           <View style={[styles.center, { width: size, height: size }]}>
             <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>👤</Text>
@@ -158,6 +171,72 @@ export const Icon: React.FC<IconProps> = ({
         return (
           <View style={[styles.center, { width: size, height: size }]}>
             <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>✓</Text>
+          </View>
+        );
+      case 'gear':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>⚙</Text>
+          </View>
+        );
+      case 'lock':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🔒</Text>
+          </View>
+        );
+      case 'trophy':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🏆</Text>
+          </View>
+        );
+      case 'history':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>⏱</Text>
+          </View>
+        );
+      case 'diamond':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>💎</Text>
+          </View>
+        );
+      case 'sign-out':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>⎋</Text>
+          </View>
+        );
+      case 'info':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>ℹ</Text>
+          </View>
+        );
+      case 'help':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>❓</Text>
+          </View>
+        );
+      case 'scale':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>📏</Text>
+          </View>
+        );
+      case 'calendar':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>📅</Text>
+          </View>
+        );
+      case 'wifi-off':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>📡</Text>
           </View>
         );
       default:

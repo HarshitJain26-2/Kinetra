@@ -153,3 +153,70 @@
 
 **REAL DEVICE ML VALIDATION: PENDING** — Awaiting physical iOS/Android device connection. All automated tests pass; full end-to-end camera → pose model → rep count pipeline requires native development build.
 
+---
+
+## Phase 33 — Profile / Account & Settings
+
+**Status**: Complete  
+**Platform**: React Native / Expo SDK 51 (TypeScript)  
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)
+
+### Features Delivered
+
+1. **Stitch Luxury Profile Dashboard (Screen 1: Elite Profile)**:
+   - Header with bold serif `PROFILE` wordmark and gold settings gear button `⚙`.
+   - Luxury dark avatar frame with gold ring monogram / photo.
+   - Display name with robust fallback hierarchy (`profile.display_name` → `user.user_metadata.full_name` → `user.email.split('@')[0]` → `'Athlete'`).
+   - Gold capsule `⬡ ELITE MEMBER` badge.
+   - Athletic motto: *"Pursuing peak performance. Focused on strength, precision, and longevity."*
+   - Real analytics overview cards (`FORM SCORE`, `SESSIONS`, `CURRENT STREAK`) derived from Phase 32 session aggregation engine.
+   - Menu rows: 🏆 `Personal Best Records`, ⏱ `Activity History` (navigates to Stats), 💎 `Kinetra Gear`.
+2. **Empty State Profile View (Screen 2: Empty State Profile)**:
+   - 3-column biometrics chip row (`WEIGHT (KG)`, `BODY FAT (%)`, `TARGET (CAL)`).
+   - "NO RECENT ACTIVITY. START YOUR ELITE JOURNEY." card with `EXPLORE WORKOUTS →` CTA linking to Explore tab.
+3. **Settings & Account Screen (Screen 3: Settings & Account)**:
+   - Header with back arrow `←`, `KINETRA` gold wordmark, and gear badge.
+   - Large serif title `Settings` with subtitle *"Manage your premium Kinetra experience."*
+   - **ACCOUNT**: `Profile Information`, `Change Password` (triggers password reset flow).
+   - **PREFERENCES**: `Units & Measurements`, `Notifications`, `Privacy & Security` (zero raw video guarantee).
+   - **APP INFORMATION**: `About Kinetra` (v1.0.0 Phase 33), `Support Center`, `Legal Terms`.
+   - Red `⎋ SIGN OUT` trigger button.
+4. **Sign Out Flow (Screen 4 & Screen 5: Confirmation Modal & Status)**:
+   - Custom dark bottom-sheet / modal dialog with boxed red sign-out icon.
+   - Title `SIGN OUT` with *"ARE YOU SURE YOU WISH TO SIGN OUT OF YOUR KINETRA SESSION?"*.
+   - Primary red `SIGN OUT` button + secondary `CANCEL` button.
+   - "ENDING SESSION — Securing your performance data" loading state with gold spinner.
+   - "Connection Interrupted — Unable to securely sign out" error state with `RETRY ⟳` action.
+5. **Icon System Expansion**:
+   - Added glyphs: `gear`, `lock`, `trophy`, `history`, `diamond`, `sign-out`, `info`, `help`, `scale`, `calendar`, `wifi-off`, `person`.
+
+### New Files
+
+| File | Purpose |
+|---|---|
+| `mobile/src/screens/SettingsScreen.tsx` | Stitch Screen 3 Settings & Account subview |
+| `mobile/src/components/SignOutModal.tsx` | Stitch Screen 4 & 5 Confirmation & Status modal |
+| `mobile/tests/profileAccount.test.ts` | Phase 33 unit test suite |
+
+### Modified Files
+
+| File | Change |
+|---|---|
+| `mobile/src/screens/ProfileScreen.tsx` | Replaced basic placeholder with full Stitch Elite & Empty states |
+| `mobile/src/components/Icon.tsx` | Added 12 new glyphs for Profile, Settings, and Sign Out |
+| `mobile/src/navigation/BottomTabNavigator.tsx` | Passed `navigation` prop to `ProfileScreen` |
+
+### Verification Results
+
+- **Mobile Tests**: **81 / 81 PASS** (`npm test` in `mobile/`)
+  - Phase 33 Profile & Settings Tests: 11 / 11 PASS
+  - Phase 32 Stats & Analytics Tests: 7 / 7 PASS
+  - Phase 31 Real Device ML: 15 / 15 PASS
+  - All Prior Phases: 48 / 48 PASS
+- **Mobile TypeScript**: **PASS** (0 errors, `npm run typecheck`)
+- **Expo Bundler Verification**: **PASS** (Web 514 modules, iOS 884 modules, Android 883 modules exported cleanly)
+- **Backend Regression**: **294 / 294 PASS** (`npm test` in root)
+- **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` not present in `mobile/`
+- **Data Integrity**: Zero fabricated profile/analytics values; all missing metrics gracefully display `--` or empty state
+
+

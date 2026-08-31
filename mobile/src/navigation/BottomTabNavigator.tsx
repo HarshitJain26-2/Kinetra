@@ -58,7 +58,7 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
       case 'Stats':
         return <StatsScreen navigation={combinedNavigation} />;
       case 'Profile':
-        return <ProfileScreen />;
+        return <ProfileScreen navigation={combinedNavigation} />;
       default:
         return <HomeScreen navigation={combinedNavigation} />;
     }
