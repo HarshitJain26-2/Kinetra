@@ -5,6 +5,7 @@ import {
   ChallengesController,
   LeaderboardController,
 } from '../controllers/misc.controller.js';
+import { FoodLogsController } from '../controllers/foodLogs.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
 import {
@@ -18,6 +19,11 @@ import {
   challengeFilterQuerySchema,
   leaderboardQuerySchema,
 } from '../validators/misc.validators.js';
+import {
+  foodLogIdParamSchema,
+  foodLogFilterQuerySchema,
+  createFoodLogBodySchema,
+} from '../validators/foodLogs.validators.js';
 import { paginationQuerySchema } from '../validators/common.validators.js';
 
 export const injuriesRouter = Router();
@@ -68,6 +74,30 @@ nutritionRouter.post(
   requireAuth,
   validateRequest({ body: nutritionRecommendBodySchema }),
   NutritionController.recommend
+);
+
+// GET /api/v1/nutrition/logs
+nutritionRouter.get(
+  '/logs',
+  requireAuth,
+  validateRequest({ query: foodLogFilterQuerySchema }),
+  FoodLogsController.list
+);
+
+// POST /api/v1/nutrition/logs
+nutritionRouter.post(
+  '/logs',
+  requireAuth,
+  validateRequest({ body: createFoodLogBodySchema }),
+  FoodLogsController.create
+);
+
+// DELETE /api/v1/nutrition/logs/:id
+nutritionRouter.delete(
+  '/logs/:id',
+  requireAuth,
+  validateRequest({ params: foodLogIdParamSchema }),
+  FoodLogsController.delete
 );
 
 // ── Challenges ─────────────────────────────────────────────────

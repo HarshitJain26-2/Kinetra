@@ -281,17 +281,107 @@
 
 ### Verification Results
 
-- **Mobile Tests**: **92 / 92 PASS** (`npm test` in `mobile/`)
+- **Mobile Tests**: **101 / 101 PASS** (`npm test` in `mobile/`)
+  - Phase 35 Core Mobile Completion Tests: 9 / 9 PASS
   - Phase 34 Nutrition UI & Engine Tests: 11 / 11 PASS
   - Phase 33 Profile & Settings Tests: 11 / 11 PASS
   - Phase 32 Stats & Analytics Tests: 7 / 7 PASS
   - Phase 31 Real Device ML: 15 / 15 PASS
   - All Prior Phases: 48 / 48 PASS
 - **Mobile TypeScript**: **PASS** (0 errors, `npm run typecheck`)
-- **Expo Bundler Verification**: **PASS** (Web 520 modules, iOS 890 modules, Android 889 modules exported cleanly)
-- **Backend Regression**: **294 / 294 PASS** (`npm test` in root)
+- **Expo Bundler Verification**: **PASS** (Web, iOS, Android exported cleanly)
+- **Backend Regression**: **298 / 298 PASS** (`npm test` in root)
 - **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` not present in `mobile/`
-- **Data Integrity**: Zero fabricated nutrition numbers; all missing metrics gracefully display `--` or "Insufficient Data" state
+
+---
+
+## Phase 35 — Remaining Core Mobile Completion
+
+**Status**: Complete (Code Implementation, Backend Migrations, API Endpoints, Durable Storage & Automated Test Suites Verified; Real Hardware ML Frame Buffer Ingestion Pending EAS Development Client)  
+**Platform**: React Native / Expo SDK 51 / TypeScript / PostgreSQL  
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)
+
+### What Was Implemented
+
+1. **Onboarding Questionnaire Flow (`OnboardingScreen.tsx`, Stitch Screen 1)**:
+   - "DEFINE YOUR PROTOCOL" hero banner, phase indicator (`PHASE 01 // ATHLETE SETUP`, `1 OF 4`).
+   - Primary objective input, 3-tier fitness level selector (`TIER 1 (Intermediate)`, `TIER 2 (Advanced)`, `TIER 3 (Elite/Pro)`), height (cm) & weight (kg) 2-column input.
+   - Saves via `apiClient.updateUserProfile` (`onboarding_done: true`) and derives initial daily calorie target via `apiClient.upsertNutritionProfile`.
+   - Guaranteed navigation reset to `Main`.
+
+2. **Profile & Biometrics Command Center (`EditProfileScreen.tsx`, Stitch Screen 2)**:
+   - "Command Center" with Call Sign (`display_name`), Status badge (`⬡ Elite`), Classification (`Hybrid Athlete`), Height, Mass (Weight), Body Fat, and dynamic Basal Metabolic Rate (BMR) estimate calculated using Mifflin-St Jeor formula.
+   - Synchronizes with `PUT /api/v1/users/me` and refreshes user context.
+
+3. **Custom Workout Builder (`CreateWorkoutScreen.tsx`, Stitch Screen 3)**:
+   - "Build Your Session" routine creator with searchable exercise catalog loaded from `GET /api/v1/exercises`.
+   - Category filter pills (`ALL`, `PUSH`, `PULL`, `LEGS`), active exercise reordering with target sets, target reps, and rest timers.
+   - Persists via `POST /api/v1/workouts` and navigates to the newly created routine in `WorkoutDetailsScreen`.
+
+4. **Complete Manual Workout Session Flow (`ManualWorkoutScreen.tsx`, Stitch Screen 4)**:
+   - Full non-camera multi-set workout logger with active session badge, `SET X OF Y` progress indicator, automated 75s rest timer countdown with sound/vibration alerts.
+   - Large gold weight & rep counters with `[-]` and `[+]` adjusters.
+   - Logs completed sets to `POST /api/v1/sessions/:id/log-exercise` and finalizes via `POST /api/v1/sessions/:id/end`.
+
+5. **1RM Progression & Exercise History (`ExerciseProgressScreen.tsx`, Stitch Image 2 Screen 1)**:
+   - "1RM Progression" curves for Squat, Deadlift, Bench, and custom exercises with SVG gradient area fills and glowing gold strokes.
+   - Computes estimated 1RM using standard Epley formula: $\text{1RM} = \text{weight} \times (1 + \text{reps} / 30)$ from actual `session_exercises` database entries.
+
+6. **Historical Nutrition Database & APIs (`migrations/004_daily_food_logs.sql`)**:
+   - PostgreSQL schema table `daily_food_logs` with strict `auth.uid()` Row-Level Security.
+   - Backend routes `GET /api/v1/nutrition/logs`, `POST /api/v1/nutrition/logs`, `DELETE /api/v1/nutrition/logs/:id`.
+   - All 4 new backend test cases verified in `tests/foodLogs.test.ts`.
+
+7. **Manual Meal Logger Modal (`LogMealModal.tsx`, Stitch Image 2 Screen 2)**:
+   - Modal for entering meal name, timing, calories, protein, carbs, and fats.
+   - Quick Log presets for 1-tap logging (`Wild Caught Salmon & Quinoa`, `Elite Greens Smoothie`).
+   - Dynamically feeds the Daily Intake dial and macro bars in `NutritionScreen.tsx`.
+
+8. **Train Quick Start Hub (`TrainScreen.tsx`, Stitch Image 2 Screen 3)**:
+   - Replaced placeholder banner with high-performance Stitch command deck.
+   - One-tap quick launchers: `START AI VISION TRAINING` (into `LiveWorkoutScreen`) and `START MANUAL SESSION` (into `ManualWorkoutScreen`).
+
+9. **Durable Offline Queue Storage (`offlineQueue.ts`)**:
+   - Local disk persistence surviving cold app restarts with deduplication, zero auth token storage, and zero raw frame storage.
+
+10. **Native Camera -> MediaPipe Bridge Specification (`nativeBridge.ts`)**:
+    - Typed architectural interface bridging camera frame processing worklets and MediaPipe 33-point landmarks to `MobilePoseRunner`.
+
+### New Files Created
+
+| File | Purpose |
+|---|---|
+| `mobile/src/screens/OnboardingScreen.tsx` | Multi-step initial onboarding wizard |
+| `mobile/src/screens/EditProfileScreen.tsx` | Profile biometrics Command Center |
+| `mobile/src/screens/CreateWorkoutScreen.tsx` | Custom workout routine builder |
+| `mobile/src/screens/ManualWorkoutScreen.tsx` | Multi-set manual workout session logger |
+| `mobile/src/screens/ExerciseProgressScreen.tsx` | 1RM strength curves and volume history |
+| `mobile/src/components/LogMealModal.tsx` | Manual food & macro intake entry modal |
+| `mobile/src/engine/pose/nativeBridge.ts` | Native camera frame processor interface |
+| `migrations/004_daily_food_logs.sql` | Database migration for food logging |
+| `src/controllers/foodLogs.controller.ts` | Backend food logs controller |
+| `src/validators/foodLogs.validators.ts` | Backend food logs validation schemas |
+| `src/services/foodLogs.service.ts` | Backend food logs service layer |
+| `tests/foodLogs.test.ts` | Backend food logs integration test suite |
+| `mobile/tests/phase35Core.test.ts` | Comprehensive Phase 35 mobile test suite |
+
+### Modified Files
+
+| File | Change |
+|---|---|
+| `mobile/src/navigation/types.ts` | Added `Onboarding`, `EditProfile`, `CreateWorkout`, `ManualWorkout`, `ExerciseProgress` |
+| `mobile/src/navigation/RootNavigator.tsx` | Registered all Phase 35 screens |
+| `mobile/src/screens/SettingsScreen.tsx` | Connected Profile Information to `EditProfileScreen` |
+| `mobile/src/screens/ProfileScreen.tsx` | Connected Personal Best Records to `ExerciseProgressScreen` |
+| `mobile/src/screens/ExploreScreen.tsx` | Added `+ BUILD CUSTOM PROTOCOL` action |
+| `mobile/src/screens/StatsScreen.tsx` | Added 1RM Strength Progression drill-down button |
+| `mobile/src/screens/WorkoutDetailsScreen.tsx` | Added `📋 START MANUAL SESSION` dual-action button |
+| `mobile/src/screens/NutritionScreen.tsx` | Integrated `LogMealModal` and real logged food intake metrics |
+| `mobile/src/screens/TrainScreen.tsx` | Built Train Quick Start Hub with AI Vision and Manual session cards |
+| `mobile/src/utils/offlineQueue.ts` | Implemented durable disk persistence |
+| `mobile/src/api/client.ts` | Added food log APIs, 1RM calculators, and profile update methods |
+| `src/routes/misc.routes.ts` | Mounted `/api/v1/nutrition/logs` endpoints |
+
 
 
 

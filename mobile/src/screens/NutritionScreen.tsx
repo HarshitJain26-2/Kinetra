@@ -20,12 +20,14 @@ import { CalorieDial } from '../components/CalorieDial';
 import { MacroProgressBar } from '../components/MacroProgressBar';
 import { MealCard } from '../components/MealCard';
 import { LoadingIndicator } from '../components/LoadingIndicator';
+import { LogMealModal } from '../components/LogMealModal';
 import {
   apiClient,
   UserProfileData,
   NutritionProfileData,
   GeneratedMealPlan,
   MealPlanItem,
+  DailyFoodLogItem,
   computeBMI,
 } from '../api/client';
 
@@ -37,6 +39,8 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [nutritionProfile, setNutritionProfile] = useState<NutritionProfileData | null>(null);
   const [mealPlan, setMealPlan] = useState<GeneratedMealPlan | null>(null);
+  const [dailyLogs, setDailyLogs] = useState<DailyFoodLogItem[]>([]);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +48,17 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   const fetchNutritionData = useCallback(async () => {
     setError(null);
     try {
-      // 1. Fetch user biometrics and nutrition profile in parallel
-      const [userRes, nutRes] = await Promise.all([
+      const todayStr = new Date().toISOString().split('T')[0];
+      // 1. Fetch user biometrics, nutrition profile, and daily food logs in parallel
+      const [userRes, nutRes, logsRes] = await Promise.all([
         apiClient.getCurrentUserProfile().catch(() => null),
         apiClient.getNutritionProfile().catch(() => null),
+        apiClient.getDailyFoodLogs(todayStr).catch(() => []),
       ]);
 
       setUserProfile(userRes);
       setNutritionProfile(nutRes);
+      setDailyLogs(Array.isArray(logsRes) ? logsRes : []);
 
       // 2. Fetch or trigger recommendations if nutrition profile exists
       if (nutRes) {
@@ -96,8 +103,21 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   const targetCalories =
     nutritionProfile?.daily_cal_target || mealPlan?.total_calories || null;
 
+  // Consumed Calories calculated from actual food log ledger entries
+  const actualConsumedCalories = dailyLogs.reduce((sum, log) => sum + Number(log.calories || 0), 0);
+  const actualConsumedProtein = dailyLogs.reduce((sum, log) => sum + Number(log.protein_g || 0), 0);
+  const actualConsumedCarbs = dailyLogs.reduce((sum, log) => sum + Number(log.carbs_g || 0), 0);
+  const actualConsumedFat = dailyLogs.reduce((sum, log) => sum + Number(log.fat_g || 0), 0);
+
+  const displayConsumedCalories = dailyLogs.length > 0 ? actualConsumedCalories : (targetCalories ? Math.round(targetCalories * 0.65) : null);
+  const displayConsumedProtein = dailyLogs.length > 0 ? actualConsumedProtein : null;
+  const displayConsumedCarbs = dailyLogs.length > 0 ? actualConsumedCarbs : null;
+  const displayConsumedFat = dailyLogs.length > 0 ? actualConsumedFat : null;
+
   const targetCaloriesDisplay = targetCalories ? `${targetCalories}` : '--';
-  const remainingCaloriesDisplay = targetCalories ? `${Math.round(targetCalories * 0.35)}` : '--';
+  const remainingCaloriesDisplay = targetCalories && displayConsumedCalories
+    ? `${Math.max(0, targetCalories - displayConsumedCalories)}`
+    : (targetCalories ? `${Math.round(targetCalories * 0.35)}` : '--');
 
   // Macro Targets
   const proteinTarget = nutritionProfile?.protein_g || (mealPlan?.meals ? Math.round(mealPlan.meals.reduce((sum, m) => sum + m.protein_g, 0)) : null);
@@ -129,10 +149,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   };
 
   const handleLogCustomMeal = () => {
-    Alert.alert(
-      'Log Custom Meal',
-      'Direct macro manual input and AI food telemetry will be synced to your daily intake ledger.'
-    );
+    setIsLogModalOpen(true);
   };
 
   return (
@@ -329,6 +346,13 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
           </>
         )}
       </ScrollView>
+
+      {/* Manual Meal Entry Modal */}
+      <LogMealModal
+        visible={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+        onMealLogged={fetchNutritionData}
+      />
     </SafeAreaView>
   );
 };

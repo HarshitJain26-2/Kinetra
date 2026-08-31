@@ -265,6 +265,19 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
                   testID="chart-calories"
                 />
               )}
+
+              {/* 1RM Drilldown Button */}
+              <TouchableOpacity
+                style={styles.drilldownButton}
+                onPress={() => navigation?.navigate('ExerciseProgress')}
+                testID="stats-1rm-progression-button"
+              >
+                <View style={styles.drilldownLeft}>
+                  <Icon name="sparkle" size={16} color={colors.gold} />
+                  <Text style={styles.drilldownText}>1RM STRENGTH PROGRESSION</Text>
+                </View>
+                <Text style={styles.drilldownArrow}>→</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -471,6 +484,35 @@ const styles = StyleSheet.create({
     color: colors.inverseText,
     fontWeight: '800',
     fontSize: 11,
+    letterSpacing: 1.5,
+  },
+  drilldownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceDim,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderGold,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  drilldownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  drilldownText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 1.2,
+  },
+  drilldownArrow: {
+    color: colors.gold,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

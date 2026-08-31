@@ -160,7 +160,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      {/* 3. MAIN WORKOUT LIST / STATES */}
+      {/* 3. SCROLLABLE WORKOUT LIST */}
       <ScrollView
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -173,6 +173,19 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
           />
         }
       >
+        {/* BUILD CUSTOM PROTOCOL BUTTON */}
+        <TouchableOpacity
+          style={styles.buildProtocolBtn}
+          onPress={() => navigation?.navigate('CreateWorkout')}
+          testID="build-custom-protocol-btn"
+        >
+          <View style={styles.buildProtocolLeft}>
+            <Icon name="sparkle" size={16} color={colors.gold} />
+            <Text style={styles.buildProtocolText}>+ BUILD CUSTOM PROTOCOL</Text>
+          </View>
+          <Icon name="chevron-right" size={14} color={colors.gold} />
+        </TouchableOpacity>
+
         {loading ? (
           <View style={styles.stateWrapper}>
             <LoadingIndicator message="Loading training regimens..." />
@@ -397,5 +410,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: spacing.lg,
+  },
+  buildProtocolBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceDim,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.borderGold,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    marginBottom: spacing.md,
+  },
+  buildProtocolLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buildProtocolText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
 });

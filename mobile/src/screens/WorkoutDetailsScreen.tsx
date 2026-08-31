@@ -81,6 +81,13 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
     });
   };
 
+  const handleStartManualWorkout = () => {
+    navigation.navigate('ManualWorkout', {
+      workoutId,
+      workout: workout || undefined,
+    });
+  };
+
   const getHeroImage = () => {
     if (!workout) return images.gymBarbell;
     switch (workout.category.toLowerCase()) {
@@ -265,13 +272,21 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
         ]}
       >
         <KinetraButton
-          title="START WORKOUT ▶"
+          title="⚡ START LIVE VISION"
           variant="primary"
           onPress={handleStartWorkout}
           style={styles.startWorkoutButton}
           textStyle={styles.startWorkoutText}
           testID="workout-details-start-button"
         />
+
+        <TouchableOpacity
+          style={styles.startManualBtn}
+          onPress={handleStartManualWorkout}
+          testID="workout-details-start-manual-button"
+        >
+          <Text style={styles.startManualText}>📋 START MANUAL SESSION</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -482,11 +497,29 @@ const styles = StyleSheet.create({
   startWorkoutButton: {
     backgroundColor: colors.gold,
     height: 52,
+    marginBottom: 8,
   },
   startWorkoutText: {
+    ...typography.labelCaps,
     color: colors.inverseText,
-    fontSize: 13,
-    letterSpacing: 1.5,
     fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
+  startManualBtn: {
+    backgroundColor: colors.surfaceDim,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.borderGold,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startManualText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 1.2,
   },
 });

@@ -102,10 +102,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const hasSessions = analytics && analytics.totalWorkouts > 0;
 
   const handlePersonalBests = () => {
-    Alert.alert(
-      'Personal Best Records',
-      'AI-verified PR telemetry and biomechanical milestones will update automatically following scored sets.'
-    );
+    if (navigation?.navigate) {
+      navigation.navigate('ExerciseProgress');
+    } else {
+      Alert.alert(
+        'Personal Best Records',
+        'AI-verified PR telemetry and biomechanical milestones will update automatically following scored sets.'
+      );
+    }
   };
 
   const handleActivityHistory = () => {
@@ -129,7 +133,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   // If user opened Settings, render SettingsScreen subview
   if (isSettingsOpen) {
-    return <SettingsScreen onBack={() => setIsSettingsOpen(false)} />;
+    return <SettingsScreen onBack={() => setIsSettingsOpen(false)} navigation={navigation} />;
   }
 
   return (

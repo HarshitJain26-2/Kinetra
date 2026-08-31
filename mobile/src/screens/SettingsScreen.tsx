@@ -61,25 +61,30 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, items }) => (
 
 interface SettingsScreenProps {
   onBack: () => void;
+  navigation?: any;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigation }) => {
   const { user, signOut, resetPassword } = useAuth();
   const [showSignOutModal, setShowSignOutModal] = useState<boolean>(false);
   const [signingOut, setSigningOut] = useState<boolean>(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const handleProfileInfo = () => {
-    const email = user?.email || 'N/A';
-    const name =
-      user?.user_metadata?.full_name ||
-      user?.user_metadata?.display_name ||
-      email.split('@')[0];
+    if (navigation?.navigate) {
+      navigation.navigate('EditProfile');
+    } else {
+      const email = user?.email || 'N/A';
+      const name =
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.display_name ||
+        email.split('@')[0];
 
-    Alert.alert(
-      'Profile Information',
-      `Athlete Name: ${name}\nEmail: ${email}\nTier: Elite Member\nSecurity: End-to-End Encrypted`
-    );
+      Alert.alert(
+        'Profile Information',
+        `Athlete Name: ${name}\nEmail: ${email}\nTier: Elite Member\nSecurity: End-to-End Encrypted`
+      );
+    }
   };
 
   const handleChangePassword = () => {

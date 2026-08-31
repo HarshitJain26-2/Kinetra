@@ -27,6 +27,14 @@ export type RootStackParamList = {
     meal: MealPlanItem;
     dietType?: string;
   };
+  Onboarding: undefined;
+  EditProfile: undefined;
+  CreateWorkout: undefined;
+  ManualWorkout: {
+    workoutId: string;
+    workout?: WorkoutItem;
+  };
+  ExerciseProgress: undefined;
 };
 
 export type MainTabParamList = {

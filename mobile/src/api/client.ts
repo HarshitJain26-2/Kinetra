@@ -474,6 +474,60 @@ export const apiClient = {
     return apiClient.post('/api/v1/pose-analysis', payload, { token });
   },
 
+  async updateUserProfile(
+    payload: Partial<Omit<UserProfileData, 'id' | 'email'>>,
+    token?: string | null
+  ): Promise<UserProfileData> {
+    return apiClient.put<UserProfileData>('/api/v1/users/me', payload, { token });
+  },
+
+  async getExercises(
+    query: { muscle_group?: string; difficulty?: string; page?: number; limit?: number } = {},
+    token?: string | null
+  ): Promise<ExerciseCatalogItem[]> {
+    return apiClient.get<ExerciseCatalogItem[]>('/api/v1/exercises', {
+      query: query as Record<string, string | number | boolean | undefined>,
+      token,
+    });
+  },
+
+  async createWorkout(
+    payload: CreateWorkoutInput,
+    token?: string | null
+  ): Promise<WorkoutItem> {
+    return apiClient.post<WorkoutItem>('/api/v1/workouts', payload, { token });
+  },
+
+  async startSession(
+    workout_id?: string | null,
+    token?: string | null
+  ): Promise<{ id: string; status: string; started_at: string }> {
+    return apiClient.post('/api/v1/sessions/start', { workout_id }, { token });
+  },
+
+  async endSession(
+    sessionId: string,
+    notes?: string,
+    token?: string | null
+  ): Promise<FullSessionItem> {
+    return apiClient.post(`/api/v1/sessions/${sessionId}/end`, { notes }, { token });
+  },
+
+  async getDailyFoodLogs(date?: string, token?: string | null): Promise<DailyFoodLogItem[]> {
+    return apiClient.get<DailyFoodLogItem[]>('/api/v1/nutrition/logs', {
+      query: date ? { date } : undefined,
+      token,
+    });
+  },
+
+  async createFoodLog(payload: CreateFoodLogInput, token?: string | null): Promise<DailyFoodLogItem> {
+    return apiClient.post<DailyFoodLogItem>('/api/v1/nutrition/logs', payload, { token });
+  },
+
+  async deleteFoodLog(id: string, token?: string | null): Promise<void> {
+    return apiClient.delete(`/api/v1/nutrition/logs/${id}`, { token });
+  },
+
   async getNutritionProfile(token?: string | null): Promise<NutritionProfileData> {
     return apiClient.get<NutritionProfileData>('/api/v1/nutrition/profile', { token });
   },
@@ -491,6 +545,121 @@ export const apiClient = {
   ): Promise<NutritionRecommendResponse> {
     return apiClient.post<NutritionRecommendResponse>('/api/v1/nutrition/recommend', options, { token });
   },
+};
+
+export interface ExerciseCatalogItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  muscle_group: string;
+  equipment?: string | null;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface CreateWorkoutInput {
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  is_public?: boolean;
+  exercises?: Array<{
+    exercise_id: string;
+    order_index: number;
+    target_sets: number;
+    target_reps?: number | null;
+    target_weight_kg?: number | null;
+  }>;
+}
+
+export interface DailyFoodLogItem {
+  id: string;
+  user_id: string;
+  log_date: string;
+  meal_name: string;
+  timing: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'pre_workout' | 'post_workout';
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  created_at: string;
+}
+
+export interface CreateFoodLogInput {
+  log_date?: string;
+  meal_name: string;
+  timing?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'pre_workout' | 'post_workout';
+  calories: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+}
+
+export interface Exercise1RMData {
+  exerciseId: string;
+  exerciseName: string;
+  category: string;
+  current1RM: number | null;
+  historicalTrend: ChartDataPoint[];
+}
+
+export const calculate1RM = (weightKg?: number | null, reps?: number | null): number | null => {
+  if (!weightKg || weightKg <= 0 || !reps || reps <= 0) return null;
+  if (reps === 1) return Math.round(weightKg);
+  // Epley formula: 1RM = weight * (1 + reps / 30)
+  return Math.round(weightKg * (1 + reps / 30));
+};
+
+export const computeExercise1RMProgression = (
+  sessions: (FullSessionItem | SessionItem)[],
+  targetExercises: { name: string; category?: string }[] = [
+    { name: 'Squat', category: 'BARBELL BACK SQUAT' },
+    { name: 'Deadlift', category: 'CONVENTIONAL' },
+    { name: 'Bench', category: 'FLAT BARBELL' },
+  ]
+): Exercise1RMData[] => {
+  return targetExercises.map((target, idx) => {
+    const matchingSets: { date: string; calculated1RM: number }[] = [];
+
+    for (const session of sessions) {
+      const full = session as FullSessionItem;
+      if (full.exercises && Array.isArray(full.exercises)) {
+        for (const ex of full.exercises) {
+          const exName = (ex.exercise?.name || '').toLowerCase();
+          if (exName.includes(target.name.toLowerCase())) {
+            const val1RM = calculate1RM(ex.weight_kg, ex.reps);
+            if (val1RM) {
+              matchingSets.push({
+                date: session.started_at,
+                calculated1RM: val1RM,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    matchingSets.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const trend: ChartDataPoint[] = matchingSets.map((s, i) => {
+      const d = new Date(s.date);
+      return {
+        id: `rm-${idx}-${i}`,
+        date: d.toISOString().split('T')[0],
+        label: `${d.getMonth() + 1}/${d.getDate()}`,
+        value: s.calculated1RM,
+      };
+    });
+
+    const max1RM = matchingSets.length > 0 ? Math.max(...matchingSets.map((s) => s.calculated1RM)) : null;
+
+    return {
+      exerciseId: `target-ex-${idx}`,
+      exerciseName: target.name,
+      category: target.category || 'COMPOUND',
+      current1RM: max1RM,
+      historicalTrend: trend,
+    };
+  });
 };
 
 export type NutritionGoal = 'lose_weight' | 'maintain' | 'gain_muscle' | 'general_health';
