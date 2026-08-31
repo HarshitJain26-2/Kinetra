@@ -7,7 +7,7 @@ import { PoseEngine } from '../src/engine/pose/PoseEngine';
 import { MobilePoseRunner } from '../src/engine/pose/mobilePoseRunner';
 import { offlineSetQueue } from '../src/utils/offlineQueue';
 
-describe('Phase 30: Live Vision Coaching & Pose Tracking Interface Tests', () => {
+describe('Phase 31: Real Device ML Validation & Live Vision Hardening Tests', () => {
   describe('Category A: Deterministic PoseEngine & Geometry Integration', () => {
     it('calculates 90 degree perpendicular joint angle accurately', () => {
       const hip = { x: 0.5, y: 0.2 };
@@ -59,6 +59,34 @@ describe('Phase 30: Live Vision Coaching & Pose Tracking Interface Tests', () =>
       assert.ok(result.completedRepScore && result.completedRepScore >= 90);
     });
 
+    it('accurately counts exact sequences: 3 reps -> 3, 5 reps -> 5, 10 reps -> 10', () => {
+      const counter = new ExerciseRepCounter({
+        restAngle: 160,
+        targetAngle: 90,
+        thresholdTolerance: 10,
+      });
+
+      const performRep = () => {
+        counter.processSample(160); // REST
+        counter.processSample(135); // TRANSITION
+        counter.processSample(85);  // INFLECTION
+        counter.processSample(135); // RECOVERY
+        counter.processSample(160); // REST (+1)
+      };
+
+      // 3 reps
+      for (let i = 0; i < 3; i++) performRep();
+      assert.equal(counter.getCount(), 3);
+
+      // 2 more reps -> 5 reps total
+      for (let i = 0; i < 2; i++) performRep();
+      assert.equal(counter.getCount(), 5);
+
+      // 5 more reps -> 10 reps total
+      for (let i = 0; i < 5; i++) performRep();
+      assert.equal(counter.getCount(), 10);
+    });
+
     it('does NOT increment rep count when athlete is standing still', () => {
       const counter = new ExerciseRepCounter({
         restAngle: 160,
@@ -89,6 +117,11 @@ describe('Phase 30: Live Vision Coaching & Pose Tracking Interface Tests', () =>
 
       const result = PoseEngine.analyze(SQUAT_ANALYSIS_CONFIG, frames);
       assert.ok(result.flags.some((f) => f.flag === 'excessive_forward_lean'));
+    });
+
+    it('evaluates Push-Up and Bicep Curl configurations correctly', () => {
+      assert.equal(PUSHUP_ANALYSIS_CONFIG.rep_rule.angle_name, 'left_elbow_angle');
+      assert.equal(BICEP_CURL_ANALYSIS_CONFIG.rep_rule.target_angle, 35);
     });
   });
 
@@ -165,6 +198,22 @@ describe('Phase 30: Live Vision Coaching & Pose Tracking Interface Tests', () =>
       runner.resume();
       const processedAfterResume = runner.processRawLandmarks(rawSample, 1100);
       assert.equal(processedAfterResume, true);
+    });
+
+    it('collects diagnostic metrics without leaking raw coordinate streams', () => {
+      const runner = new MobilePoseRunner(SQUAT_ANALYSIS_CONFIG);
+      const rawSample: RawLandmarkInput[] = [
+        { index: 11, x: 0.4, y: 0.3, visibility: 0.9 },
+        { index: 23, x: 0.45, y: 0.6, visibility: 0.9 },
+        { index: 25, x: 0.45, y: 0.8, visibility: 0.9 },
+        { index: 27, x: 0.45, y: 0.95, visibility: 0.9 },
+      ];
+
+      runner.processRawLandmarks(rawSample, 1000);
+      const diag = runner.getDiagnostics();
+      assert.ok(typeof diag.droppedFrameCount === 'number');
+      assert.ok(typeof diag.processedFrameCount === 'number');
+      assert.equal(diag.processedFrameCount, 1);
     });
   });
 

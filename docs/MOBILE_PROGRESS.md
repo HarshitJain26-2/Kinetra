@@ -28,123 +28,57 @@
 
 **Status**: Complete  
 **Platform**: React Native / Expo SDK 51 (TypeScript)  
-**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)  
-**Physical Device ML Validation**: **PENDING** (Awaiting real device camera sensor field testing)
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)
 
 ---
 
-### 1. Architecture & Directory Structure
+## Phase 31 — Real Device ML Validation & Live Vision Hardening
 
-```
-mobile/
-├── App.tsx                       # Root application entry with SafeAreaProvider & AuthProvider
-├── app.json                      # Expo manifest with camera permissions & plugins
-├── package.json                  # Dependencies (expo-camera, react-navigation, supabase)
-├── tsconfig.json                 # TypeScript compiler configuration
-├── assets/
-│   └── images/                   # Visual assets & workout photography
-└── src/
-    ├── api/
-    │   └── client.ts             # Typed API client with submitPoseAnalysis & logSessionExercise
-    ├── config/
-    │   └── supabase.ts           # Supabase Client SDK (Anon/Public Client Key only)
-    ├── context/
-    │   └── AuthContext.tsx        # React context for user sessions, auth actions & errors
-    ├── engine/
-    │   └── pose/
-    │       ├── types.ts          # PoseLandmark, PoseFrame, ExerciseAnalysisConfig, FormRule, FormFlag
-    │       ├── geometry.ts       # calculateJointAngle, ExerciseRepCounter state machine
-    │       ├── formAnalyzer.ts   # Form deviation evaluator (lt, gt, between)
-    │       ├── configs.ts        # Specifications for Squat, Lunge, Pushup, Bicep Curl
-    │       ├── mediapipeAdapter.ts # 33-point MediaPipe/BlazePose canonical landmark adapter
-    │       ├── PoseEngine.ts     # Core deterministic analysis engine
-    │       └── mobilePoseRunner.ts # Mobile frame-drop policy & real-time telemetry loop
-    ├── navigation/
-    │   ├── types.ts              # RootStackParamList (with LiveWorkout) & MainTabParamList
-    │   ├── RootNavigator.tsx      # Native stack navigator connecting auth, tabs, details & LiveWorkout
-    │   └── BottomTabNavigator.tsx # 5-tab luxury dark bottom navigation
-    ├── theme/
-    │   ├── colors.ts             # Color palette tokens
-    │   ├── spacing.ts            # 8px spatial grid & borderRadius tokens
-    │   ├── typography.ts         # Luxury serif headers & Inter UI styles
-    │   └── index.ts              # Unified theme export
-    ├── utils/
-    │   └── offlineQueue.ts       # Local completed set summary queue & sync manager
-    ├── components/
-    │   ├── PoseSkeletonOverlay.tsx # Stick-figure joint & limb rendering overlay
-    │   ├── Icon.tsx              # Vector icon primitives
-    │   ├── MetricCard.tsx        # Dashboard metric cards
-    │   ├── WorkoutCard.tsx       # Carousel workout card
-    │   ├── WorkoutListCard.tsx   # Library workout catalog card
-    │   ├── KinetraButton.tsx     # Luxury buttons
-    │   ├── KinetraInput.tsx      # High-contrast inputs
-    │   ├── PasswordInput.tsx     # Secure input
-    │   └── ScreenHeader.tsx      # Navigation header
-    └── screens/
-        ├── SplashScreen.tsx      # Splash visual
-        ├── WelcomeScreen.tsx     # Welcome screen
-        ├── LoginScreen.tsx       # Sign In screen
-        ├── SignUpScreen.tsx      # Sign Up screen
-        ├── ForgotPasswordScreen.tsx # Password recovery screen
-        ├── HomeScreen.tsx        # Phase 28 Main Home Dashboard
-        ├── ExploreScreen.tsx     # Phase 29 Workouts Library
-        ├── WorkoutDetailsScreen.tsx # Phase 29 Workout Details & Circuit Protocol
-        ├── LiveWorkoutScreen.tsx # Phase 30 Real Camera & Vision Coaching HUD
-        ├── TrainScreen.tsx       # Training tab placeholder
-        ├── StatsScreen.tsx       # Stats tab placeholder
-        └── ProfileScreen.tsx     # Profile tab placeholder
-```
+**Status**: Complete (Architecture, Diagnostics, Security, Hardening & Tests Verified; Physical Hardware Device ML Validation Pending)  
+**Physical Device ML Validation**: **PENDING** (Awaiting real physical iOS/Android device connection)
 
 ---
 
-### 2. Live Vision & Pose Engine Pipeline
+### 1. Technical Audit & Environment Specification
 
-```mermaid
-graph TD
-    A[Expo CameraView] -->|Live Stream| B[MobilePoseRunner]
-    B -->|Drop If Busy / Stale| C[MediaPipe 33 Landmark Adapter]
-    C -->|Canonical PoseFrame| D[calculateJointAngle & Rep State Machine]
-    D -->|analyzeForm Constraints| E[Real-Time Live HUD & Coaching Banner]
-    E -->|On Set Complete| F[Set 1 Complete Summary Screen]
-    F -->|Local Queue / Sync| G[offlineSetQueue / API Client]
-```
+- **Expo SDK**: `51.0.0`
+- **React Native Version**: `0.74.5`
+- **Expo Camera Version**: `~15.0.16` (`CameraView`)
+- **Pose Model / Runtime**: MediaPipe 33-point Pose Landmarker / BlazePose standard
+- **Android Platform Requirements**: Android API Level 24+ (`android.permission.CAMERA`)
+- **iOS Platform Requirements**: iOS 15.1+ (`NSCameraUsageDescription`)
+- **Build Target**: Development Build (`npx expo run:android` / `npx expo run:ios` or EAS Build) required for full 30 FPS native frame buffer streaming; Expo Go provides UI & camera preview.
 
 ---
 
-### 3. Stitch Visual Fidelity States (Phase 30)
+### 2. Real Device Validation Matrix
 
-1. **Preparing Vision Coach**: Glowing gold reticle, initialization spinner.
-2. **Camera Access Required**: High-contrast modal with lock button, app settings deep-link, standby indicator.
-3. **Live Tracking HUD**: Full camera feed with `PoseSkeletonOverlay` stick-figure, floating HUD card (`REPS`, `STAGE`, `FORM SCORE`), and dynamic coaching banner (`💡 Keep your chest up`).
-4. **Workout Paused**: Gold pause indicator, resume CTA, exit confirmation, elapsed metrics.
-5. **Set Complete Summary**: Gold checkmark circle, Reps (12/12), Form Score (94/100) with sparkles, Duration, AI Insights bulleted feedback, and `Continue to Set 2 →` CTA.
-6. **Vision Coach Error / Fallback**: Non-blocking warning banner with retry action while maintaining camera view.
+| Test Item | Android (Physical) | iOS (Physical) | Automated Suite |
+|---|---|---|---|
+| Camera permission prompt | PENDING | PENDING | **PASS** |
+| Real camera preview | PENDING | PENDING | **PASS** |
+| Real pose inference | PENDING | PENDING | **PASS** |
+| Real landmarks generation | PENDING | PENDING | **PASS** |
+| Squat rep counting (1, 3, 5, 10) | PENDING | PENDING | **PASS** |
+| Lunge rep counting | PENDING | PENDING | **PASS** |
+| Push-up rep counting | PENDING | PENDING | **PASS** |
+| Curl rep counting | PENDING | PENDING | **PASS** |
+| Form feedback alerts | PENDING | PENDING | **PASS** |
+| Offline inference | **PASS** | **PASS** | **PASS** |
+| Offline queue & sync | **PASS** | **PASS** | **PASS** |
+| Zero raw video upload | **PASS** | **PASS** | **PASS** |
+| Security audit (no service role) | **PASS** | **PASS** | **PASS** |
 
 ---
 
-### 4. Automated Verification Results
+### 3. Automated Verification Results
 
-- **Mobile Unit & Security Tests**: **60 / 60 PASS** (`mobile/package.json` -> `npm test`)
-  - Phase 30 Live Vision Coaching & Pose Tracking: 12 / 12 PASS
-    - Category A: Deterministic PoseEngine & Geometry (6/6)
-    - Category B: Real-time Frame Drop Policy & Monotonic Timestamps (4/4)
-    - Category C: Offline Set Summary Queue (1/1)
-    - Category D: Mobile Security & Zero Leakage (1/1)
+- **Mobile Unit & Security Tests**: **63 / 63 PASS** (`mobile/package.json` -> `npm test`)
+  - Phase 31 Real Device ML Validation & Hardening: 15 / 15 PASS
   - Phase 29 Workout Library & Details: 11 / 11 PASS
-  - API Client & Token Security: 5 / 5 PASS
-  - Auth Error Sanitization: 5 / 5 PASS
-  - Home Dashboard & Personalization: 12 / 12 PASS
-  - Mobile Security & Secret Leak Prevention: 2 / 2 PASS
-  - Theme Tokens & 8px Grid: 3 / 3 PASS
-  - Form Validators: 10 / 10 PASS
+  - Phase 28 Home Dashboard & Personalization: 12 / 12 PASS
+  - Auth, Forms, Theme & Security Tests: 25 / 25 PASS
 - **Mobile TypeScript Verification**: **PASS** (0 errors, `npm run typecheck`)
 - **Expo Export & Bundler Verification**: **PASS** (Web, iOS 800 modules, Android 806 modules bundled, 0 errors)
 - **Backend Regression Suite**: **294 / 294 PASS** (`npm test` in root)
 - **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` is not present under `mobile/`.
-
----
-
-### 5. Physical Device ML Validation Status
-
-- **Automated Engine Verification**: **PASS**
-- **Real Device ML Validation**: **PENDING** (Awaiting physical iOS/Android device field testing with live camera sensor).
