@@ -6,7 +6,16 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
-  HomePlaceholder: undefined;
+  Main: undefined;
+  HomePlaceholder?: undefined;
+};
+
+export type MainTabParamList = {
+  Home: undefined;
+  Explore: undefined;
+  Train: undefined;
+  Stats: undefined;
+  Profile: undefined;
 };
 
 export type ScreenNavigationProp<T extends keyof RootStackParamList> =

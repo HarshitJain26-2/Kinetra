@@ -7,7 +7,7 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
-import { HomeScreenPlaceholder } from '../screens/HomeScreenPlaceholder';
+import { BottomTabNavigator } from './BottomTabNavigator';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -33,7 +33,7 @@ export const RootNavigator: React.FC = () => {
   return (
     <NavigationContainer theme={KinetraDarkNavTheme}>
       <Stack.Navigator
-        initialRouteName={session ? 'HomePlaceholder' : 'Splash'}
+        initialRouteName={session ? 'Main' : 'Splash'}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
@@ -45,7 +45,8 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="HomePlaceholder" component={HomeScreenPlaceholder} />
+        <Stack.Screen name="Main" component={BottomTabNavigator} />
+        <Stack.Screen name="HomePlaceholder" component={BottomTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -42,7 +42,7 @@ export const SignUpScreen: React.FC<ScreenProps<'SignUp'>> = ({ navigation }) =>
     if (success) {
       navigation.reset({
         index: 0,
-        routes: [{ name: 'HomePlaceholder' }],
+        routes: [{ name: 'Main' }],
       });
     }
   };
