@@ -186,6 +186,221 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   return json.data as T;
 }
 
+export interface SessionItem {
+  id: string;
+  user_id: string;
+  workout_id: string | null;
+  status: 'active' | 'completed' | 'cancelled';
+  started_at: string;
+  ended_at: string | null;
+  duration_sec: number | null;
+  calories_est: number | null;
+  notes: string | null;
+}
+
+export interface SessionExerciseDetail {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+  set_number: number;
+  reps: number | null;
+  weight_kg: number | null;
+  duration_sec: number | null;
+  form_score: number | null;
+  injury_flag: boolean;
+  feedback: string | null;
+  recorded_at: string;
+  exercise?: {
+    id: string;
+    name: string;
+    category?: string;
+  };
+}
+
+export interface FullSessionItem extends SessionItem {
+  exercises?: SessionExerciseDetail[];
+  summary?: {
+    total_sets: number;
+    total_reps: number;
+    avg_form_score: number | null;
+    injury_flags_raised: number;
+  };
+}
+
+export interface ChartDataPoint {
+  id: string;
+  date: string;
+  label: string;
+  value: number;
+}
+
+export interface ComputedAnalytics {
+  totalWorkouts: number;
+  totalReps: number | null;
+  activeMinutes: number;
+  caloriesBurned: number | null;
+  avgFormScore: number | null;
+  currentStreak: number;
+  weeklyActiveDays: boolean[]; // Mon to Sun
+  repTrend: ChartDataPoint[];
+  formScoreTrend: ChartDataPoint[];
+  durationTrend: ChartDataPoint[];
+  calorieTrend: ChartDataPoint[];
+}
+
+export const computeAnalyticsFromSessions = (
+  sessions: SessionItem[],
+  timeRange: '7D' | '30D' | '90D' | 'ALL'
+): ComputedAnalytics => {
+  const now = new Date();
+  let cutoffDate: Date | null = null;
+
+  if (timeRange === '7D') {
+    cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  } else if (timeRange === '30D') {
+    cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else if (timeRange === '90D') {
+    cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  }
+
+  const completedSessions = sessions.filter((s) => {
+    // Guard against null/undefined entries from malformed API responses
+    if (!s || typeof s !== 'object') return false;
+    if (s.status !== 'completed' && s.ended_at === null) return false;
+    if (!cutoffDate) return true;
+    const sessionTime = new Date(s.started_at).getTime();
+    return Number.isFinite(sessionTime) && sessionTime >= cutoffDate.getTime();
+  });
+
+  // Sort chronologically ascending for charts
+  const sortedSessions = [...completedSessions].sort(
+    (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
+  );
+
+  let totalDurationSec = 0;
+  let totalCalories: number | null = null;
+  let formScoreSum = 0;
+  let formScoreCount = 0;
+  let totalReps: number | null = null;
+
+  const repTrend: ChartDataPoint[] = [];
+  const formScoreTrend: ChartDataPoint[] = [];
+  const durationTrend: ChartDataPoint[] = [];
+  const calorieTrend: ChartDataPoint[] = [];
+
+  const workoutDatesSet = new Set<string>();
+
+  for (const session of sortedSessions) {
+    const sessionDate = new Date(session.started_at);
+    const dateStr = sessionDate.toISOString().split('T')[0];
+    workoutDatesSet.add(dateStr);
+
+    const monthDay = `${sessionDate.getMonth() + 1}/${sessionDate.getDate()}`;
+
+    if (session.duration_sec && session.duration_sec > 0) {
+      totalDurationSec += session.duration_sec;
+      const mins = Math.round(session.duration_sec / 60);
+      durationTrend.push({
+        id: session.id,
+        date: dateStr,
+        label: monthDay,
+        value: mins,
+      });
+    }
+
+    if (session.calories_est !== null && session.calories_est !== undefined) {
+      if (totalCalories === null) totalCalories = 0;
+      totalCalories += session.calories_est;
+      calorieTrend.push({
+        id: session.id,
+        date: dateStr,
+        label: monthDay,
+        value: Math.round(session.calories_est),
+      });
+    }
+
+    // Check full session summary if available
+    const fullSession = session as FullSessionItem;
+    if (fullSession.summary?.total_reps !== undefined) {
+      if (totalReps === null) totalReps = 0;
+      totalReps += fullSession.summary.total_reps;
+      repTrend.push({
+        id: session.id,
+        date: dateStr,
+        label: monthDay,
+        value: fullSession.summary.total_reps,
+      });
+    }
+
+    if (fullSession.summary?.avg_form_score !== undefined && fullSession.summary.avg_form_score !== null) {
+      formScoreSum += fullSession.summary.avg_form_score;
+      formScoreCount++;
+      formScoreTrend.push({
+        id: session.id,
+        date: dateStr,
+        label: monthDay,
+        value: Math.round(fullSession.summary.avg_form_score),
+      });
+    }
+  }
+
+  // Calculate Streak — all comparisons use UTC date strings to match session.started_at toISOString()
+  let streak = 0;
+  const nowMs = Date.now();
+
+  // Derive today's UTC date string (matches what toISOString().split('T')[0] produces)
+  const todayStr = new Date(nowMs).toISOString().split('T')[0];
+  const yesterdayStr = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  // Start streak count from today if trained, otherwise yesterday, else no streak
+  let streakAnchorMs: number | null = workoutDatesSet.has(todayStr)
+    ? nowMs
+    : workoutDatesSet.has(yesterdayStr)
+    ? nowMs - 24 * 60 * 60 * 1000
+    : null;
+
+  if (streakAnchorMs !== null) {
+    // Walk backwards day by day using UTC dates
+    let cursor = streakAnchorMs;
+    while (true) {
+      const dateKey = new Date(cursor).toISOString().split('T')[0];
+      if (workoutDatesSet.has(dateKey)) {
+        streak++;
+        cursor -= 24 * 60 * 60 * 1000;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate Weekly active days (Mon–Sun) using UTC day of week
+  const utcDayOfWeek = new Date(nowMs).getUTCDay(); // 0=Sun, 1=Mon…6=Sat
+  const distanceToMonday = utcDayOfWeek === 0 ? -6 : 1 - utcDayOfWeek;
+  const mondayMs = nowMs + distanceToMonday * 24 * 60 * 60 * 1000;
+  // Snap to UTC midnight of that Monday
+  const mondayMidnightMs = new Date(new Date(mondayMs).toISOString().split('T')[0] + 'T00:00:00.000Z').getTime();
+
+  const weeklyActiveDays: boolean[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dayKey = new Date(mondayMidnightMs + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    weeklyActiveDays.push(workoutDatesSet.has(dayKey));
+  }
+
+  return {
+    totalWorkouts: completedSessions.length,
+    totalReps,
+    activeMinutes: Math.round(totalDurationSec / 60),
+    caloriesBurned: totalCalories ? Math.round(totalCalories) : null,
+    avgFormScore: formScoreCount > 0 ? Math.round(formScoreSum / formScoreCount) : null,
+    currentStreak: streak,
+    weeklyActiveDays,
+    repTrend,
+    formScoreTrend,
+    durationTrend,
+    calorieTrend,
+  };
+};
+
 export const apiClient = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     apiRequest<T>(endpoint, { ...options, method: 'GET' }),
@@ -222,6 +437,20 @@ export const apiClient = {
     return apiClient.get<WorkoutItem>(`/api/v1/workouts/${workoutId}`, { token });
   },
 
+  async getUserSessions(
+    filters: { status?: string; page?: number; limit?: number } = {},
+    token?: string | null
+  ): Promise<SessionItem[]> {
+    return apiClient.get<SessionItem[]>('/api/v1/sessions', {
+      query: filters as Record<string, string | number | boolean | undefined>,
+      token,
+    });
+  },
+
+  async getSessionById(sessionId: string, token?: string | null): Promise<FullSessionItem> {
+    return apiClient.get<FullSessionItem>(`/api/v1/sessions/${sessionId}`, { token });
+  },
+
   async logSessionExercise(
     sessionId: string,
     payload: { exercise_id: string; sets: number; reps: number; duration_seconds?: number },
@@ -245,3 +474,4 @@ export const apiClient = {
     return apiClient.post('/api/v1/pose-analysis', payload, { token });
   },
 };
+
