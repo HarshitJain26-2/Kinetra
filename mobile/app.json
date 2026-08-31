@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Kinetra",
+    "slug": "kinetra",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo-mark.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/splash-bg.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#050607"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kinetra.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo-mark.png",
+        "backgroundColor": "#050607"
+      },
+      "package": "com.kinetra.app"
+    },
+    "web": {
+      "favicon": "./assets/images/logo-mark.png"
+    }
+  }
+}
