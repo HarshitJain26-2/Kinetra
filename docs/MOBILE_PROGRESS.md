@@ -24,45 +24,62 @@
 
 ---
 
+## Phase 30 — Live Vision Coaching & Pose Tracking Interface
+
+**Status**: Complete  
+**Platform**: React Native / Expo SDK 51 (TypeScript)  
+**Visual Aesthetic**: Stitch UI Luxury Dark Athletic (Onyx `#050607`, Gold `#D9B83F`, Titanium `#F4F1EA`, Crimson `#E63946`)  
+**Physical Device ML Validation**: **PENDING** (Awaiting real device camera sensor field testing)
+
+---
+
 ### 1. Architecture & Directory Structure
 
 ```
 mobile/
 ├── App.tsx                       # Root application entry with SafeAreaProvider & AuthProvider
-├── app.json                      # Expo application manifest
-├── package.json                  # Dependencies & scripts (Expo, React Navigation, Supabase)
+├── app.json                      # Expo manifest with camera permissions & plugins
+├── package.json                  # Dependencies (expo-camera, react-navigation, supabase)
 ├── tsconfig.json                 # TypeScript compiler configuration
 ├── assets/
-│   └── images/                   # Stitch visual reference assets & workout photography
+│   └── images/                   # Visual assets & workout photography
 └── src/
     ├── api/
-    │   └── client.ts             # Typed API client (getWorkouts, getWorkoutById, getCurrentUserProfile)
+    │   └── client.ts             # Typed API client with submitPoseAnalysis & logSessionExercise
     ├── config/
     │   └── supabase.ts           # Supabase Client SDK (Anon/Public Client Key only)
     ├── context/
     │   └── AuthContext.tsx        # React context for user sessions, auth actions & errors
+    ├── engine/
+    │   └── pose/
+    │       ├── types.ts          # PoseLandmark, PoseFrame, ExerciseAnalysisConfig, FormRule, FormFlag
+    │       ├── geometry.ts       # calculateJointAngle, ExerciseRepCounter state machine
+    │       ├── formAnalyzer.ts   # Form deviation evaluator (lt, gt, between)
+    │       ├── configs.ts        # Specifications for Squat, Lunge, Pushup, Bicep Curl
+    │       ├── mediapipeAdapter.ts # 33-point MediaPipe/BlazePose canonical landmark adapter
+    │       ├── PoseEngine.ts     # Core deterministic analysis engine
+    │       └── mobilePoseRunner.ts # Mobile frame-drop policy & real-time telemetry loop
     ├── navigation/
-    │   ├── types.ts              # RootStackParamList (with WorkoutDetails) & MainTabParamList
-    │   ├── RootNavigator.tsx      # Native stack navigator connecting auth, tabs & WorkoutDetails
-    │   └── BottomTabNavigator.tsx # 5-tab luxury dark bottom navigation (Home, Explore/Workouts, Train, Stats, Profile)
+    │   ├── types.ts              # RootStackParamList (with LiveWorkout) & MainTabParamList
+    │   ├── RootNavigator.tsx      # Native stack navigator connecting auth, tabs, details & LiveWorkout
+    │   └── BottomTabNavigator.tsx # 5-tab luxury dark bottom navigation
     ├── theme/
-    │   ├── colors.ts             # Exact color palette tokens
+    │   ├── colors.ts             # Color palette tokens
     │   ├── spacing.ts            # 8px spatial grid & borderRadius tokens
     │   ├── typography.ts         # Luxury serif headers & Inter UI styles
     │   └── index.ts              # Unified theme export
+    ├── utils/
+    │   └── offlineQueue.ts       # Local completed set summary queue & sync manager
     ├── components/
-    │   ├── Icon.tsx              # Vector icon primitives (home, explore, train, back, bookmark, play, warning, etc.)
-    │   ├── MetricCard.tsx        # Form Score, Active Mins, and Calories metric card widgets
-    │   ├── WorkoutCard.tsx       # Horizontal carousel workout card
-    │   ├── WorkoutListCard.tsx   # Full-width vertical workout card for library catalog
-    │   ├── KinetraButton.tsx     # Primary (Solid Gold), Secondary (Outline), DarkOutline, Text
-    │   ├── KinetraInput.tsx      # High-contrast luxury inputs with icons & error highlights
-    │   ├── PasswordInput.tsx     # Secure input with show/hide eye toggle & lock icon
-    │   ├── ScreenBackground.tsx  # Fullscreen image background with dark gradient overlay
-    │   ├── BrandLogo.tsx         # Kinetra serif wordmark & metallic emblem badge
-    │   ├── ScreenHeader.tsx      # Header with back navigation and centered branding
-    │   ├── LoadingIndicator.tsx  # Gold spinner
-    │   └── InlineError.tsx       # Crimson error notification banner
+    │   ├── PoseSkeletonOverlay.tsx # Stick-figure joint & limb rendering overlay
+    │   ├── Icon.tsx              # Vector icon primitives
+    │   ├── MetricCard.tsx        # Dashboard metric cards
+    │   ├── WorkoutCard.tsx       # Carousel workout card
+    │   ├── WorkoutListCard.tsx   # Library workout catalog card
+    │   ├── KinetraButton.tsx     # Luxury buttons
+    │   ├── KinetraInput.tsx      # High-contrast inputs
+    │   ├── PasswordInput.tsx     # Secure input
+    │   └── ScreenHeader.tsx      # Navigation header
     └── screens/
         ├── SplashScreen.tsx      # Splash visual
         ├── WelcomeScreen.tsx     # Welcome screen
@@ -70,68 +87,50 @@ mobile/
         ├── SignUpScreen.tsx      # Sign Up screen
         ├── ForgotPasswordScreen.tsx # Password recovery screen
         ├── HomeScreen.tsx        # Phase 28 Main Home Dashboard
-        ├── ExploreScreen.tsx     # Phase 29 Full Workouts Library & Category Filter
-        ├── WorkoutDetailsScreen.tsx # Phase 29 Full Workout Details & Circuit Protocol
-        ├── TrainScreen.tsx       # Phase 30 Live Vision Training placeholder
-        ├── StatsScreen.tsx       # Phase 32 Analytics & Progress placeholder
-        └── ProfileScreen.tsx     # Phase 33 Profile & Sign Out placeholder
+        ├── ExploreScreen.tsx     # Phase 29 Workouts Library
+        ├── WorkoutDetailsScreen.tsx # Phase 29 Workout Details & Circuit Protocol
+        ├── LiveWorkoutScreen.tsx # Phase 30 Real Camera & Vision Coaching HUD
+        ├── TrainScreen.tsx       # Training tab placeholder
+        ├── StatsScreen.tsx       # Stats tab placeholder
+        └── ProfileScreen.tsx     # Profile tab placeholder
 ```
 
 ---
 
-### 2. Navigation Architecture
+### 2. Live Vision & Pose Engine Pipeline
 
 ```mermaid
 graph TD
-    A[RootNavigator] --> B[BottomTabNavigator]
-    B -->|Home Tab| C[HomeScreen]
-    B -->|Explore Tab| D[ExploreScreen - Workout Library]
-    C -->|Tap Curated Card / Start Session| E[WorkoutDetailsScreen]
-    D -->|Tap Workout Card| E
-    E -->|Back Arrow| D
-    E -->|START WORKOUT ▶| F[Phase 30 Live Vision Launch Notice]
+    A[Expo CameraView] -->|Live Stream| B[MobilePoseRunner]
+    B -->|Drop If Busy / Stale| C[MediaPipe 33 Landmark Adapter]
+    C -->|Canonical PoseFrame| D[calculateJointAngle & Rep State Machine]
+    D -->|analyzeForm Constraints| E[Real-Time Live HUD & Coaching Banner]
+    E -->|On Set Complete| F[Set 1 Complete Summary Screen]
+    F -->|Local Queue / Sync| G[offlineSetQueue / API Client]
 ```
 
 ---
 
-### 3. Screen Implementations
+### 3. Stitch Visual Fidelity States (Phase 30)
 
-1. **Workouts Library (`ExploreScreen.tsx`)**:
-   - Header with user avatar profile shortcut, centered uppercase serif `WORKOUTS` wordmark, and bell notification button.
-   - Horizontal category filter pills: `All`, `Strength`, `Mobility`, `Conditioning`, `Recovery` with active gold highlights.
-   - Vertical workout feed using `WorkoutListCard` with photography, intensity/live badges, category label, serif title, description preview, duration pill (`⏱ 45 MIN`), and gold circular play button (`▶`).
-   - State handling matching Stitch design:
-     - Sleek loading indicators.
-     - Empty state with filter reset action.
-     - Exact Stitch **"Connection Interrupted"** error state card with warning circle and `⟳ RETRY` button.
-     - Native pull-to-refresh (`RefreshControl`).
-
-2. **Workout Details (`WorkoutDetailsScreen.tsx`)**:
-   - Hero photography with dark gradient fade.
-   - Top navigation overlay with rounded dark back (`←`) and bookmark (`🔖`) buttons.
-   - Category label (`STRENGTH & POWER`), bold serif title (`Tactical Strength`), duration (`⏱ 45 Min`) and difficulty (`⚡ Advanced`) chips.
-   - Description card with luxury typography.
-   - **Circuit Protocol** exercise list displaying exercise thumbnail, exercise name, target muscle/movement (`Primary Posterior Chain`), sets badge (`4 Sets`), and reps count (`12 Reps`).
-   - Sticky bottom full-width solid gold `START WORKOUT ▶` button.
-   - **Safety Invariant**: Camera, MediaPipe, and pose tracking are not executed in Phase 29 (informative telemetry prompt provided).
+1. **Preparing Vision Coach**: Glowing gold reticle, initialization spinner.
+2. **Camera Access Required**: High-contrast modal with lock button, app settings deep-link, standby indicator.
+3. **Live Tracking HUD**: Full camera feed with `PoseSkeletonOverlay` stick-figure, floating HUD card (`REPS`, `STAGE`, `FORM SCORE`), and dynamic coaching banner (`💡 Keep your chest up`).
+4. **Workout Paused**: Gold pause indicator, resume CTA, exit confirmation, elapsed metrics.
+5. **Set Complete Summary**: Gold checkmark circle, Reps (12/12), Form Score (94/100) with sparkles, Duration, AI Insights bulleted feedback, and `Continue to Set 2 →` CTA.
+6. **Vision Coach Error / Fallback**: Non-blocking warning banner with retry action while maintaining camera view.
 
 ---
 
-### 4. API Integration & Security Invariants
+### 4. Automated Verification Results
 
-- **Endpoints**:
-  - `GET /api/v1/workouts`: List workouts with category filtering and pagination.
-  - `GET /api/v1/workouts/:id`: Retrieve complete workout details with joined `workout_exercises` and `exercises` catalog entries.
-- **JWT Authorization**: All requests include `Authorization: Bearer <Supabase JWT>`.
-- **Zero Token Leakage**: Tokens and credentials are never logged to console or exposed in error details.
-- **No Service Role Key**: Audited against mobile client codebase.
-
----
-
-### 5. Automated Verification Results
-
-- **Mobile Unit & Security Tests**: **48 / 48 PASS** (`mobile/package.json` -> `npm test`)
-  - Workout Library & Details (Phase 29): 11 / 11 PASS
+- **Mobile Unit & Security Tests**: **60 / 60 PASS** (`mobile/package.json` -> `npm test`)
+  - Phase 30 Live Vision Coaching & Pose Tracking: 12 / 12 PASS
+    - Category A: Deterministic PoseEngine & Geometry (6/6)
+    - Category B: Real-time Frame Drop Policy & Monotonic Timestamps (4/4)
+    - Category C: Offline Set Summary Queue (1/1)
+    - Category D: Mobile Security & Zero Leakage (1/1)
+  - Phase 29 Workout Library & Details: 11 / 11 PASS
   - API Client & Token Security: 5 / 5 PASS
   - Auth Error Sanitization: 5 / 5 PASS
   - Home Dashboard & Personalization: 12 / 12 PASS
@@ -139,12 +138,13 @@ graph TD
   - Theme Tokens & 8px Grid: 3 / 3 PASS
   - Form Validators: 10 / 10 PASS
 - **Mobile TypeScript Verification**: **PASS** (0 errors, `npm run typecheck`)
-- **Expo Export & Bundler Verification**: **PASS** (792 iOS modules, 791 Android modules bundled, 0 errors)
+- **Expo Export & Bundler Verification**: **PASS** (Web, iOS 800 modules, Android 806 modules bundled, 0 errors)
 - **Backend Regression Suite**: **294 / 294 PASS** (`npm test` in root)
+- **Security Check**: `SUPABASE_SERVICE_ROLE_KEY` is not present under `mobile/`.
 
 ---
 
-### 6. Known Limitations & Next Steps
+### 5. Physical Device ML Validation Status
 
-- **Live Vision Coaching Engine**: Tapping `START WORKOUT ▶` alerts that live camera streaming, MediaPipe landmarking, and rep telemetry will be implemented in Phase 30.
-- **Next Phase**: **Phase 30 — Live Vision Coaching & Pose Tracking Interface**.
+- **Automated Engine Verification**: **PASS**
+- **Real Device ML Validation**: **PENDING** (Awaiting physical iOS/Android device field testing with live camera sensor).

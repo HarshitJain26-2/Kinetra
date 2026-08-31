@@ -13,6 +13,12 @@ export type RootStackParamList = {
     workoutId: string;
     initialWorkout?: WorkoutItem;
   };
+  LiveWorkout: {
+    workoutId: string;
+    workout?: WorkoutItem;
+    exercise?: { id?: string; name?: string };
+    setNumber?: number;
+  };
 };
 
 export type MainTabParamList = {

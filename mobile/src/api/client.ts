@@ -221,4 +221,27 @@ export const apiClient = {
   async getWorkoutById(workoutId: string, token?: string | null): Promise<WorkoutItem> {
     return apiClient.get<WorkoutItem>(`/api/v1/workouts/${workoutId}`, { token });
   },
+
+  async logSessionExercise(
+    sessionId: string,
+    payload: { exercise_id: string; sets: number; reps: number; duration_seconds?: number },
+    token?: string | null
+  ): Promise<any> {
+    return apiClient.post(`/api/v1/sessions/${sessionId}/log-exercise`, payload, { token });
+  },
+
+  async submitPoseAnalysis(
+    payload: {
+      session_id?: string;
+      exercise_id: string;
+      reps: number;
+      form_score: number;
+      rep_scores?: number[];
+      flags?: string[];
+      duration_ms?: number;
+    },
+    token?: string | null
+  ): Promise<any> {
+    return apiClient.post('/api/v1/pose-analysis', payload, { token });
+  },
 };

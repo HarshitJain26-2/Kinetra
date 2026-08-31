@@ -9,6 +9,7 @@ import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { WorkoutDetailsScreen } from '../screens/WorkoutDetailsScreen';
+import { LiveWorkoutScreen } from '../screens/LiveWorkoutScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -53,6 +54,14 @@ export const RootNavigator: React.FC = () => {
           component={WorkoutDetailsScreen}
           options={{
             animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="LiveWorkout"
+          component={LiveWorkoutScreen}
+          options={{
+            animation: 'slide_from_bottom',
+            gestureEnabled: false,
           }}
         />
       </Stack.Navigator>

@@ -65,11 +65,20 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
   };
 
   const handleStartWorkout = () => {
-    Alert.alert(
-      'Live Vision Coaching',
-      `Session "${workout?.title || 'Workout'}" AI Vision tracking and biomechanical form guidance will launch in Phase 30.`,
-      [{ text: 'Understood', style: 'default' }]
-    );
+    const firstExercise =
+      workout?.exercises && workout.exercises.length > 0 ? workout.exercises[0] : undefined;
+
+    navigation.navigate('LiveWorkout', {
+      workoutId,
+      workout: workout || undefined,
+      exercise: firstExercise
+        ? {
+            id: firstExercise.exercise_id,
+            name: firstExercise.exercise?.name || firstExercise.name,
+          }
+        : undefined,
+      setNumber: 1,
+    });
   };
 
   const getHeroImage = () => {

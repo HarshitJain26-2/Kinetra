@@ -13,15 +13,29 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kinetra.app"
+      "bundleIdentifier": "com.kinetra.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kinetra requires camera access for real-time biomechanical AI form coaching and repetition counting."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#050607"
       },
-      "package": "com.kinetra.app"
+      "package": "com.kinetra.app",
+      "permissions": [
+        "CAMERA"
+      ]
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kinetra requires camera access for real-time biomechanical AI form coaching and repetition counting."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/images/icon.png"
     }
