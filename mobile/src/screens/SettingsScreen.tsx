@@ -1,16 +1,21 @@
 /**
- * Kinetra Settings & Account Screen (Phase 33)
- * Exact Stitch luxury dark visual matching Screen 3.
+ * Kinetra Settings & Account Screen (Section 16: Settings Refinement)
+ * Exact Stitch luxury dark athletic visual matching Screen 3 (Settings & Preferences).
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Alert,
+  Animated,
+  Easing,
+  AccessibilityInfo,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
@@ -32,26 +37,61 @@ interface SettingsSectionProps {
   items: SettingsRowItem[];
 }
 
+const SettingsRow: React.FC<{ item: SettingsRowItem }> = ({ item }) => {
+  const rowScale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(rowScale, {
+      toValue: 0.985,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 3,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(rowScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 4,
+    }).start();
+  };
+
+  return (
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={item.onPress}
+      testID={item.testID}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+    >
+      <Animated.View
+        style={[
+          styles.rowItem,
+          { transform: [{ scale: rowScale }] },
+        ]}
+      >
+        <View style={styles.rowLeft}>
+          <View style={styles.iconWrapper}>
+            <Icon name={item.icon} size={15} color={colors.gold} />
+          </View>
+          <Text style={styles.rowTitle}>{item.title}</Text>
+        </View>
+        <Icon name="chevron-right" size={14} color={colors.tertiaryText} />
+      </Animated.View>
+    </TouchableWithoutFeedback>
+  );
+};
+
 const SettingsSection: React.FC<SettingsSectionProps> = ({ title, items }) => (
   <View style={styles.sectionContainer}>
     <Text style={styles.sectionHeader}>{title}</Text>
     <View style={styles.sectionCard}>
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
-          <TouchableOpacity
-            style={styles.rowItem}
-            onPress={item.onPress}
-            testID={item.testID}
-            accessibilityRole="button"
-          >
-            <View style={styles.rowLeft}>
-              <View style={styles.iconWrapper}>
-                <Icon name={item.icon} size={16} color={colors.gold} />
-              </View>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-            </View>
-            <Icon name="chevron-right" size={16} color={colors.tertiaryText} />
-          </TouchableOpacity>
+          <SettingsRow item={item} />
           {index < items.length - 1 && <View style={styles.rowDivider} />}
         </React.Fragment>
       ))}
@@ -70,6 +110,137 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigati
   const [signingOut, setSigningOut] = useState<boolean>(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
+  // Staggered Entrance Animation Values
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(-10)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(10)).current;
+  const sectionsOpacity = useRef(new Animated.Value(0)).current;
+  const sectionsTranslateY = useRef(new Animated.Value(12)).current;
+  const signOutOpacity = useRef(new Animated.Value(0)).current;
+  const signOutTranslateY = useRef(new Animated.Value(14)).current;
+
+  // Spring Button Scales
+  const backBtnScale = useRef(new Animated.Value(1)).current;
+  const signOutBtnScale = useRef(new Animated.Value(1)).current;
+
+  const createSpring = (val: Animated.Value, down = 0.94, back = 1) => ({
+    onPressIn: () => {
+      Animated.spring(val, {
+        toValue: down,
+        useNativeDriver: true,
+        speed: 40,
+        bounciness: 3,
+      }).start();
+    },
+    onPressOut: () => {
+      Animated.spring(val, {
+        toValue: back,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 4,
+      }).start();
+    },
+  });
+
+  const backSpring = createSpring(backBtnScale, 0.90, 1);
+  const signOutSpring = createSpring(signOutBtnScale, 0.96, 1);
+
+  // Entrance sequence
+  useEffect(() => {
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+
+    const runEntrance = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        headerOpacity.setValue(1);
+        headerTranslateY.setValue(0);
+        titleOpacity.setValue(1);
+        titleTranslateY.setValue(0);
+        sectionsOpacity.setValue(1);
+        sectionsTranslateY.setValue(0);
+        signOutOpacity.setValue(1);
+        signOutTranslateY.setValue(0);
+        return;
+      }
+
+      entranceAnim = Animated.stagger(70, [
+        // Phase 1: Header
+        Animated.parallel([
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 2: Title Block
+        Animated.parallel([
+          Animated.timing(titleOpacity, {
+            toValue: 1,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleTranslateY, {
+            toValue: 0,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 3: Settings Sections
+        Animated.parallel([
+          Animated.timing(sectionsOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sectionsTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 4: Sign Out CTA
+        Animated.parallel([
+          Animated.timing(signOutOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(signOutTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]);
+
+      entranceAnim.start();
+    };
+
+    runEntrance();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+    };
+  }, []);
+
   const handleProfileInfo = () => {
     if (navigation?.navigate) {
       navigation.navigate('EditProfile');
@@ -82,7 +253,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigati
 
       Alert.alert(
         'Profile Information',
-        `Athlete Name: ${name}\nEmail: ${email}\nTier: Elite Member\nSecurity: End-to-End Encrypted`
+        `Athlete Name: ${name}\nEmail: ${email}\nSecurity: End-to-End Encrypted`
       );
     }
   };
@@ -135,7 +306,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigati
   const handleAbout = () => {
     Alert.alert(
       'About Kinetra',
-      'Kinetra Mobile — Elite Athletic Intelligence\nVersion: 1.0.0 (Phase 33)\nEngine: On-Device MediaPipe Pose Landmark Ingestion\nArchitecture: React Native & Supabase'
+      'Kinetra Mobile — Elite Athletic Intelligence\nVersion: 1.0.0\nEngine: On-Device MediaPipe Pose Landmark Ingestion\nArchitecture: React Native & Supabase'
     );
   };
 
@@ -233,51 +404,96 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigati
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* 1. TOP HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
+      {/* 1. TOP HEADER (Stitch Reference Column 1) */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            opacity: headerOpacity,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+      >
+        <TouchableWithoutFeedback
+          {...backSpring}
           onPress={onBack}
           testID="settings-back-button"
           accessibilityLabel="Back to Profile"
           accessibilityRole="button"
         >
-          <Icon name="back" size={18} color={colors.gold} />
-        </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.backButton,
+              { transform: [{ scale: backBtnScale }] },
+            ]}
+          >
+            <Icon name="back" size={17} color={colors.gold} />
+          </Animated.View>
+        </TouchableWithoutFeedback>
 
         <Text style={styles.brandTitle}>KINETRA</Text>
 
         <View style={styles.headerRightBadge}>
           <Icon name="gear" size={16} color={colors.gold} />
         </View>
-      </View>
+      </Animated.View>
 
       {/* 2. SCROLLABLE SETTINGS CONTENT */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title Block */}
-        <View style={styles.titleBlock}>
+        {/* Title Block (Stitch Reference) */}
+        <Animated.View
+          style={[
+            styles.titleBlock,
+            {
+              opacity: titleOpacity,
+              transform: [{ translateY: titleTranslateY }],
+            },
+          ]}
+        >
           <Text style={styles.mainTitle}>Settings</Text>
           <Text style={styles.subtitle}>Manage your premium Kinetra experience.</Text>
-        </View>
+        </Animated.View>
 
-        {/* Sections */}
-        <SettingsSection title="ACCOUNT" items={accountItems} />
-        <SettingsSection title="PREFERENCES" items={preferencesItems} />
-        <SettingsSection title="APP INFORMATION" items={appInfoItems} />
+        {/* Sections (Stitch Reference Column 1) */}
+        <Animated.View
+          style={{
+            opacity: sectionsOpacity,
+            transform: [{ translateY: sectionsTranslateY }],
+          }}
+        >
+          <SettingsSection title="ACCOUNT" items={accountItems} />
+          <SettingsSection title="PREFERENCES" items={preferencesItems} />
+          <SettingsSection title="APP INFORMATION" items={appInfoItems} />
+        </Animated.View>
 
         {/* 3. SIGN OUT ACTION BUTTON */}
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={() => setShowSignOutModal(true)}
-          testID="settings-sign-out-button"
-          accessibilityRole="button"
+        <Animated.View
+          style={{
+            opacity: signOutOpacity,
+            transform: [{ translateY: signOutTranslateY }],
+          }}
         >
-          <Icon name="sign-out" size={16} color={colors.crimson} style={{ marginRight: 8 }} />
-          <Text style={styles.signOutButtonText}>SIGN OUT</Text>
-        </TouchableOpacity>
+          <TouchableWithoutFeedback
+            {...signOutSpring}
+            onPress={() => setShowSignOutModal(true)}
+            testID="settings-sign-out-button"
+            accessibilityRole="button"
+            accessibilityLabel="Sign Out of Kinetra"
+          >
+            <Animated.View
+              style={[
+                styles.signOutButton,
+                { transform: [{ scale: signOutBtnScale }] },
+              ]}
+            >
+              <Icon name="sign-out" size={15} color={colors.crimson} style={{ marginRight: 8 }} />
+              <Text style={styles.signOutButtonText}>SIGN OUT</Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </Animated.View>
       </ScrollView>
 
       {/* 4. SIGN OUT MODAL */}
@@ -296,7 +512,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#050607',
   },
   header: {
     flexDirection: 'row',
@@ -305,38 +521,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceDim,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.borderGold,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
   },
   brandTitle: {
     ...typography.brandWordmarkSmall,
     color: colors.gold,
     fontSize: 14,
-    letterSpacing: 3,
+    letterSpacing: 4,
+    fontWeight: '800',
   },
   headerRightBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceDim,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + 24,
   },
   titleBlock: {
     marginBottom: spacing.xl,
@@ -346,13 +563,15 @@ const styles = StyleSheet.create({
     fontFamily: 'serif',
     fontWeight: '700',
     color: colors.primaryText,
-    fontSize: 30,
+    fontSize: 28,
+    lineHeight: 34,
     marginBottom: 4,
   },
   subtitle: {
     ...typography.bodySm,
     color: colors.secondaryText,
-    lineHeight: 20,
+    fontSize: 12.5,
+    lineHeight: 18,
   },
   sectionContainer: {
     marginBottom: spacing.lg,
@@ -360,16 +579,17 @@ const styles = StyleSheet.create({
   sectionHeader: {
     ...typography.labelCaps,
     color: colors.tertiaryText,
-    fontSize: 10,
+    fontSize: 9.5,
     letterSpacing: 1.5,
+    fontWeight: '800',
     marginBottom: 8,
     marginLeft: 4,
   },
   sectionCard: {
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
   rowItem: {
@@ -384,38 +604,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconWrapper: {
-    width: 28,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   rowTitle: {
     ...typography.bodyMd,
     color: colors.primaryText,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13.5,
+    fontWeight: '600',
   },
   rowDivider: {
     height: 1,
-    backgroundColor: colors.borderLight,
-    marginLeft: 46,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginLeft: 54,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceDim,
-    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(230, 57, 70, 0.3)',
+    borderColor: 'rgba(230, 57, 70, 0.35)',
     paddingVertical: 14,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     marginBottom: spacing.xl,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.crimson,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   signOutButtonText: {
     ...typography.labelCaps,
     color: colors.crimson,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.5,
   },
