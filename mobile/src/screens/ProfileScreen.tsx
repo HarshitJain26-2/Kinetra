@@ -1,6 +1,6 @@
 /**
- * Kinetra Profile Screen (Section 14: Elite Profile Refinement)
- * Exact Stitch luxury dark athletic visual matching Screen 1 (Elite) and Screen 2 (Empty State).
+ * Kinetra Profile Screen (Section 15: Basic & Elite Profile Refinement)
+ * Exact Stitch luxury dark athletic visual matching Screen 1 (Elite) and Screen 2 (Basic / Empty State).
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -41,7 +41,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [analytics, setAnalytics] = useState<ComputedAnalytics | null>(null);
+  const [dailyCalTarget, setDailyCalTarget] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
@@ -64,6 +66,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const historyBtnScale = useRef(new Animated.Value(1)).current;
   const gearBtnScale = useRef(new Animated.Value(1)).current;
   const exploreBtnScale = useRef(new Animated.Value(1)).current;
+  const upgradeBtnScale = useRef(new Animated.Value(1)).current;
+  const retryBtnScale = useRef(new Animated.Value(1)).current;
 
   const createSpring = (val: Animated.Value, down = 0.94, back = 1) => ({
     onPressIn: () => {
@@ -89,6 +93,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const historySpring = createSpring(historyBtnScale, 0.98, 1);
   const gearSpring = createSpring(gearBtnScale, 0.98, 1);
   const exploreSpring = createSpring(exploreBtnScale, 0.96, 1);
+  const upgradeSpring = createSpring(upgradeBtnScale, 0.96, 1);
+  const retrySpring = createSpring(retryBtnScale, 0.95, 1);
 
   // Entrance sequence & skeleton pulse
   useEffect(() => {
@@ -206,26 +212,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   }, []);
 
   const fetchProfileAndSessions = useCallback(async () => {
+    setError(null);
     try {
       // 1. Fetch user profile from backend (if available)
       const profilePromise = apiClient.getCurrentUserProfile().catch(() => null);
       // 2. Fetch session history to compute truthful metrics
       const sessionsPromise = apiClient.getUserSessions({ limit: 100 }).catch(() => []);
+      // 3. Fetch nutrition profile for truthful target calories
+      const nutritionPromise = apiClient.getNutritionProfile().catch(() => null);
 
-      const [fetchedProfile, fetchedSessions] = await Promise.all([
+      const [fetchedProfile, fetchedSessions, fetchedNutrition] = await Promise.all([
         profilePromise,
         sessionsPromise,
+        nutritionPromise,
       ]);
 
       if (fetchedProfile) {
         setProfileData(fetchedProfile);
       }
 
+      if (fetchedNutrition && fetchedNutrition.daily_cal_target) {
+        setDailyCalTarget(fetchedNutrition.daily_cal_target);
+      }
+
       const rawSessions = Array.isArray(fetchedSessions) ? (fetchedSessions as SessionItem[]) : [];
       const computed = computeAnalyticsFromSessions(rawSessions, 'ALL');
       setAnalytics(computed);
-    } catch {
-      // Graceful fallback with null state (no fabricated data)
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          'Profile telemetry is temporarily offline. Please verify connection and retry.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -255,6 +272,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const userEmail = profileData?.email || user?.email || 'athlete@kinetra.ai';
   const initialLetter = displayName.charAt(0).toUpperCase() || 'A';
+
+  // Membership Tier Resolution (Real Data Invariant)
+  // Strictly verifies real application state before labeling user as Elite.
+  const isElite =
+    profileData?.fitness_level === 'elite' ||
+    user?.user_metadata?.tier === 'elite' ||
+    user?.user_metadata?.membership === 'elite';
 
   // Metrics (Strict no-fabrication rule)
   const formScoreDisplay =
@@ -288,7 +312,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleKinetraGear = () => {
     Alert.alert(
       'Kinetra Gear & Membership',
-      'Tier: Elite Founding Member\nHardware Sync: Vision Coach Active\nTelemetry Protocol: 30 FPS On-Device'
+      isElite
+        ? 'Tier: Elite Founding Member\nHardware Sync: Vision Coach Active\nTelemetry Protocol: 30 FPS On-Device'
+        : 'Tier: Athlete Member\nAccess: Live Workouts & Exercise Library\nUpgrade: Unlock on-device Vision Coach AI coaching'
     );
   };
 
@@ -363,9 +389,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Animated.View style={[styles.skeletonStreakCard, { opacity: skeletonShimmer }]} />
             <Animated.View style={[styles.skeletonMenuCard, { opacity: skeletonShimmer }]} />
           </View>
+        ) : error ? (
+          /* Stitch Error State */
+          <View style={styles.errorCard} testID="profile-error-state">
+            <View style={styles.warningCircle}>
+              <Icon name="warning" size={28} color={colors.crimson} />
+            </View>
+            <Text style={styles.errorTitle}>Connection Interrupted</Text>
+            <Text style={styles.errorSubtitle}>{error}</Text>
+            <TouchableWithoutFeedback
+              {...retrySpring}
+              onPress={fetchProfileAndSessions}
+              testID="profile-retry-button"
+              accessibilityRole="button"
+              accessibilityLabel="Retry fetching profile"
+            >
+              <Animated.View
+                style={[
+                  styles.retryButton,
+                  { transform: [{ scale: retryBtnScale }] },
+                ]}
+              >
+                <Icon name="retry" size={14} color={colors.inverseText} style={styles.retryIcon} />
+                <Text style={styles.retryButtonText}>RETRY</Text>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </View>
         ) : (
           <>
-            {/* AVATAR & IDENTITY SECTION (Stitch Reference Screen 1) */}
+            {/* AVATAR & IDENTITY SECTION (Matches Stitch Reference Screen 1 & Screen 2) */}
             <Animated.View
               style={[
                 styles.identityCard,
@@ -376,8 +428,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               ]}
               testID="profile-identity-card"
             >
-              {/* Luxury Squircle Avatar with Gold Halo & Athlete Photo */}
-              <View style={styles.avatarFrame}>
+              {/* Luxury Squircle Avatar with Athlete Photo */}
+              <View
+                style={[
+                  styles.avatarFrame,
+                  isElite ? styles.avatarFrameElite : styles.avatarFrameBasic,
+                ]}
+              >
                 <View style={styles.avatarInner}>
                   <Image
                     source={images.heroAthlete}
@@ -385,13 +442,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     resizeMode="cover"
                   />
                   <View style={styles.avatarOverlay} />
-                  {/* Subtle initial letter watermark if photo fails */}
+                  {/* Subtle watermark fallback */}
                   <Text style={styles.avatarWatermark}>{initialLetter}</Text>
                 </View>
 
-                {/* Camera / Edit status indicator dot */}
+                {/* Status indicator badge */}
                 <View style={styles.avatarStatusBadge}>
-                  <Icon name="sparkle" size={10} color={colors.gold} />
+                  <Icon
+                    name={isElite ? 'sparkle' : 'profile'}
+                    size={10}
+                    color={colors.gold}
+                  />
                 </View>
               </View>
 
@@ -400,16 +461,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 {displayName.toUpperCase()}
               </Text>
 
-              {/* Elite Member Badge */}
-              <View style={styles.tierBadge} testID="profile-tier-badge">
-                <Icon name="sparkle" size={11} color={colors.gold} style={{ marginRight: 6 }} />
-                <Text style={styles.tierBadgeText}>ELITE MEMBER</Text>
-              </View>
+              {/* Status / Membership Hierarchy (Elite vs Basic) */}
+              {isElite ? (
+                <>
+                  {/* Elite Member Badge */}
+                  <View style={styles.tierBadge} testID="profile-tier-badge">
+                    <Icon name="sparkle" size={11} color={colors.gold} style={{ marginRight: 6 }} />
+                    <Text style={styles.tierBadgeText}>ELITE MEMBER</Text>
+                  </View>
 
-              {/* Athletic Motto */}
-              <Text style={styles.bioText}>
-                Pursuing peak performance. Focused on strength, precision, and longevity.
-              </Text>
+                  {/* Athletic Motto */}
+                  <Text style={styles.bioText}>
+                    Pursuing peak performance. Focused on strength, precision, and longevity.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  {/* Basic Athlete: Displays Real Email / Identifier (Matching Column 5 Reference) */}
+                  <Text style={styles.userEmailText} testID="profile-user-email">
+                    {userEmail}
+                  </Text>
+
+                  {/* Basic Tier Badge */}
+                  <View style={styles.basicTierBadge} testID="profile-tier-badge">
+                    <Text style={styles.basicTierBadgeText}>ATHLETE MEMBER</Text>
+                  </View>
+                </>
+              )}
             </Animated.View>
 
             {/* 3. METRICS OVERVIEW OR EMPTY STATE */}
@@ -580,7 +658,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 </Animated.View>
               </>
             ) : (
-              /* EMPTY STATE (Stitch Reference Screen 2) */
+              /* EMPTY STATE (Matches Stitch Column 5 Reference Screen 2) */
               <Animated.View
                 style={{
                   opacity: metricsOpacity,
@@ -605,12 +683,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
                   <View style={styles.chipCard}>
                     <Text style={styles.chipLabel}>TARGET</Text>
-                    <Text style={styles.chipValue}>--</Text>
+                    <Text style={styles.chipValue}>
+                      {dailyCalTarget ? `${dailyCalTarget}` : '--'}
+                    </Text>
                     <Text style={styles.chipUnit}>CAL</Text>
                   </View>
                 </View>
 
-                {/* Activity History Empty State Card */}
+                {/* Activity History Empty State Card (Column 5) */}
                 <View style={styles.emptyHistoryCard} testID="profile-empty-history-card">
                   <Text style={styles.emptySectionTitle}>Activity History</Text>
 
@@ -639,6 +719,43 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       </Animated.View>
                     </TouchableWithoutFeedback>
                   </View>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* UPGRADE CARD FOR BASIC ATHLETES */}
+            {!isElite && (
+              <Animated.View
+                style={{
+                  opacity: menuOpacity,
+                  transform: [{ translateY: menuTranslateY }],
+                }}
+              >
+                <View style={styles.upgradeCard} testID="profile-upgrade-card">
+                  <View style={styles.upgradeHeaderRow}>
+                    <View style={styles.upgradeSparkleIcon}>
+                      <Icon name="sparkle" size={14} color={colors.gold} />
+                    </View>
+                    <Text style={styles.upgradeTitle}>ELEVATE TO ELITE PROTOCOL</Text>
+                  </View>
+                  <Text style={styles.upgradeDescription}>
+                    Unlock 30 FPS on-device computer vision biomechanical coaching, custom circuit builders, and granular performance telemetry.
+                  </Text>
+                  <TouchableWithoutFeedback
+                    {...upgradeSpring}
+                    onPress={handleKinetraGear}
+                    accessibilityRole="button"
+                    accessibilityLabel="View Elite Status Benefits"
+                  >
+                    <Animated.View
+                      style={[
+                        styles.upgradeButton,
+                        { transform: [{ scale: upgradeBtnScale }] },
+                      ]}
+                    >
+                      <Text style={styles.upgradeButtonText}>VIEW ELITE STATUS →</Text>
+                    </Animated.View>
+                  </TouchableWithoutFeedback>
                 </View>
               </Animated.View>
             )}
@@ -754,8 +871,6 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 18,
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(217, 184, 63, 0.45)',
     padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -763,15 +878,23 @@ const styles = StyleSheet.create({
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: colors.gold,
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
       },
       android: {
         elevation: 6,
       },
     }),
+  },
+  avatarFrameElite: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 184, 63, 0.45)',
+  },
+  avatarFrameBasic: {
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   avatarInner: {
     width: '100%',
@@ -817,6 +940,14 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     letterSpacing: 2,
     fontSize: 22,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  userEmailText: {
+    ...typography.bodySm,
+    color: colors.secondaryText,
+    fontSize: 12,
+    letterSpacing: 0.5,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -837,6 +968,22 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 1.5,
+  },
+  basicTierBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginBottom: spacing.md,
+  },
+  basicTierBadgeText: {
+    ...typography.labelCaps,
+    color: colors.secondaryText,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.2,
   },
   bioText: {
     ...typography.bodySm,
@@ -980,7 +1127,7 @@ const styles = StyleSheet.create({
     marginLeft: 60,
   },
 
-  // Empty State Biometric Chips
+  // Empty State Biometric Chips (Stitch Column 5)
   chipsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -1017,7 +1164,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
 
-  // Empty Activity History Card
+  // Empty Activity History Card (Stitch Column 5)
   emptyHistoryCard: {
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
@@ -1078,5 +1225,114 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.5,
+  },
+
+  // Upgrade Invitation Card for Basic Athletes
+  upgradeCard: {
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.3)',
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  upgradeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  upgradeSparkleIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(217, 184, 63, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeTitle: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  upgradeDescription: {
+    ...typography.bodySm,
+    color: colors.secondaryText,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: spacing.md,
+  },
+  upgradeButton: {
+    backgroundColor: colors.gold,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: borderRadius.xs,
+  },
+  upgradeButtonText: {
+    ...typography.labelCaps,
+    color: colors.inverseText,
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+
+  // Error Card Styles
+  errorCard: {
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(230, 57, 70, 0.4)',
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  warningCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 57, 70, 0.5)',
+    backgroundColor: 'rgba(230, 57, 70, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  errorTitle: {
+    ...typography.headlineMd,
+    color: colors.primaryText,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    fontSize: 21,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    ...typography.bodySm,
+    color: colors.secondaryText,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    height: 48,
+    borderRadius: borderRadius.xs,
+    backgroundColor: colors.gold,
+  },
+  retryIcon: {
+    marginRight: 8,
+  },
+  retryButtonText: {
+    ...typography.labelCaps,
+    color: colors.inverseText,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '800',
   },
 });
