@@ -111,6 +111,17 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const repScaleAnim = useRef(new Animated.Value(1)).current;
   const coachingFadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Dedicated Initializing Screen Animations
+  const initBgOpacity = useRef(new Animated.Value(0)).current;
+  const initBrandingOpacity = useRef(new Animated.Value(0)).current;
+  const initBrandingTranslateY = useRef(new Animated.Value(12)).current;
+  const initRadarOpacity = useRef(new Animated.Value(0)).current;
+  const initRadarScale = useRef(new Animated.Value(0.92)).current;
+  const initStatusOpacity = useRef(new Animated.Value(0)).current;
+  const initStatusTranslateY = useRef(new Animated.Value(10)).current;
+  const initTechRowOpacity = useRef(new Animated.Value(0)).current;
+  const initPulseAnim = useRef(new Animated.Value(1)).current;
+
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -237,7 +248,117 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     };
   }, [hudOpacity, topHeaderTranslateY, centerHeroScale, bottomControlsTranslateY, pulseAnim]);
 
+  // 3a. Initializing Vision Coach Entrance Sequence
+  useEffect(() => {
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+
+    const runInitEntrance = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        initBgOpacity.setValue(1);
+        initBrandingOpacity.setValue(1);
+        initBrandingTranslateY.setValue(0);
+        initRadarOpacity.setValue(1);
+        initRadarScale.setValue(1);
+        initStatusOpacity.setValue(1);
+        initStatusTranslateY.setValue(0);
+        initTechRowOpacity.setValue(1);
+        return;
+      }
+
+      entranceAnim = Animated.stagger(70, [
+        Animated.timing(initBgOpacity, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.parallel([
+          Animated.timing(initBrandingOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(initBrandingTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(initRadarOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(initRadarScale, {
+            toValue: 1,
+            duration: 450,
+            easing: Easing.out(Easing.back(1.2)),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(initStatusOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(initStatusTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(initTechRowOpacity, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]);
+
+      entranceAnim.start();
+
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(initPulseAnim, {
+            toValue: 1.06,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(initPulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseLoop.start();
+    };
+
+    runInitEntrance();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+      if (pulseLoop) pulseLoop.stop();
+    };
+  }, []);
+
   const formatDuration = (totalSeconds: number): string => {
+
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -515,24 +636,117 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 1: INITIALIZING VISION COACH
+  // RENDER STATE 1: INITIALIZING VISION COACH (Stitch Laboratory Loading)
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'INITIALIZING') {
     return (
-      <View style={styles.darkCanvas}>
-        <View style={styles.initCard}>
-          <Animated.View style={[styles.radarCircle, { transform: [{ scale: pulseAnim }] }]}>
-            <Icon name="pulse" size={32} color={colors.gold} />
+      <View style={styles.initRoot}>
+        {/* Background Atmosphere */}
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: initBgOpacity }]}>
+          <ImageBackground
+            source={images.gymBarbell}
+            style={StyleSheet.absoluteFillObject}
+            imageStyle={styles.initBgImageStyle}
+          >
+            <View style={styles.initBackdropOverlay} />
+          </ImageBackground>
+        </Animated.View>
+
+        <SafeAreaView style={styles.initSafeContainer} edges={['top', 'bottom']}>
+          {/* Top Branding Block */}
+          <Animated.View
+            style={[
+              styles.initBrandingBlock,
+              {
+                opacity: initBrandingOpacity,
+                transform: [{ translateY: initBrandingTranslateY }],
+              },
+            ]}
+          >
+            <Text style={styles.initBrandTitle}>KINETRA</Text>
+            <View style={styles.initBrandEyebrowRow}>
+              <View style={styles.initBrandDot} />
+              <Text style={styles.initBrandSubtitle}>VISION COACH PROTOCOL</Text>
+            </View>
           </Animated.View>
-          <Text style={styles.initTitle}>PREPARING{'\n'}VISION COACH</Text>
-          <View style={styles.initStatusRow}>
-            <View style={styles.statusDot} />
-            <Text style={styles.initStatusText}>Initializing On-Device ML PoseEngine...</Text>
+
+          {/* Central AI Radar Visual */}
+          <Animated.View
+            style={[
+              styles.initCentralArea,
+              {
+                opacity: initRadarOpacity,
+                transform: [
+                  { scale: initRadarScale },
+                  { scale: initPulseAnim },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.initRadarOuterRing}>
+              <View style={styles.initRadarMiddleRing}>
+                <View style={styles.initRadarCore}>
+                  <Icon name="pulse" size={30} color={colors.gold} />
+                </View>
+              </View>
+              {/* Technical Corner Markers */}
+              <View style={[styles.radarMarker, styles.markerTL]} />
+              <View style={[styles.radarMarker, styles.markerTR]} />
+              <View style={[styles.radarMarker, styles.markerBL]} />
+              <View style={[styles.radarMarker, styles.markerBR]} />
+            </View>
+          </Animated.View>
+
+          {/* Primary Status & Heading */}
+          <Animated.View
+            style={[
+              styles.initStatusBlock,
+              {
+                opacity: initStatusOpacity,
+                transform: [{ translateY: initStatusTranslateY }],
+              },
+            ]}
+          >
+            <Text style={styles.initMainHeading}>PREPARING{'\n'}VISION COACH</Text>
+            <Text style={styles.initSubCopy}>
+              INITIALIZING ON-DEVICE PERFORMANCE ANALYSIS
+            </Text>
+          </Animated.View>
+
+          {/* Technical Subsystems Status Grid */}
+          <Animated.View
+            style={[
+              styles.initTechStatusGrid,
+              { opacity: initTechRowOpacity },
+            ]}
+          >
+            <View style={styles.techStatusCard}>
+              <View style={styles.techStatusDotActive} />
+              <Text style={styles.techStatusLabel}>VISION ENGINE</Text>
+              <Text style={styles.techStatusValue}>STARTING</Text>
+            </View>
+            <View style={styles.techStatusCard}>
+              <View style={styles.techStatusDotPending} />
+              <Text style={styles.techStatusLabel}>CAMERA FEED</Text>
+              <Text style={styles.techStatusValue}>CALIBRATING</Text>
+            </View>
+            <View style={styles.techStatusCard}>
+              <View style={styles.techStatusDotPending} />
+              <Text style={styles.techStatusLabel}>BIOMECHANICS</Text>
+              <Text style={styles.techStatusValue}>STANDBY</Text>
+            </View>
+          </Animated.View>
+
+          {/* Live System Standby Indicator */}
+          <View style={styles.initBottomSignalRow}>
+            <View style={styles.initSignalDot} />
+            <Text style={styles.initSignalText}>SYSTEM INITIALIZING • ON-DEVICE LOCAL ML</Text>
           </View>
-        </View>
+        </SafeAreaView>
       </View>
     );
   }
+
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER STATE 2: CAMERA ACCESS REQUIRED
@@ -1162,24 +1376,125 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     justifyContent: 'space-between',
   },
-  // ── Initializing State ──
-  initCard: {
+  // ── Initializing Vision Coach State (Stitch Laboratory Loading) ──
+  initRoot: {
     flex: 1,
+    backgroundColor: '#050607',
+  },
+  initBgImageStyle: {
+    opacity: 0.14,
+    resizeMode: 'cover',
+  },
+  initBackdropOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 6, 7, 0.94)',
+  },
+  initSafeContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  initBrandingBlock: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+  },
+  initBrandTitle: {
+    ...typography.headlineMd,
+    color: colors.primaryText,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    letterSpacing: 5,
+    fontSize: 18,
+  },
+  initBrandEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  initBrandDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.gold,
+  },
+  initBrandSubtitle: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 9,
+    letterSpacing: 2,
+    fontWeight: '800',
+  },
+  initCentralArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: spacing.md,
+  },
+  initRadarOuterRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: 'rgba(217, 184, 63, 0.04)',
+  },
+  initRadarMiddleRing: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 184, 63, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(217, 184, 63, 0.08)',
+  },
+  initRadarCore: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(217, 184, 63, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radarCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 2,
+  radarMarker: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(217, 184, 63, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
   },
-  initTitle: {
+  markerTL: {
+    top: 6,
+    left: 6,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+  },
+  markerTR: {
+    top: 6,
+    right: 6,
+    borderTopWidth: 1.5,
+    borderRightWidth: 1.5,
+  },
+  markerBL: {
+    bottom: 6,
+    left: 6,
+    borderBottomWidth: 1.5,
+    borderLeftWidth: 1.5,
+  },
+  markerBR: {
+    bottom: 6,
+    right: 6,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
+  },
+  initStatusBlock: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  initMainHeading: {
     ...typography.headlineLg,
     color: colors.primaryText,
     fontFamily: 'serif',
@@ -1187,24 +1502,81 @@ const styles = StyleSheet.create({
     fontSize: 26,
     textAlign: 'center',
     lineHeight: 32,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
-  initStatusRow: {
+  initSubCopy: {
+    ...typography.labelCaps,
+    color: colors.secondaryText,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  initTechStatusGrid: {
     flexDirection: 'row',
+    gap: 8,
+    marginBottom: spacing.lg,
+  },
+  techStatusCard: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: spacing.sm,
     alignItems: 'center',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  techStatusDotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.gold,
+    marginBottom: 6,
+  },
+  techStatusDotPending: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.tertiaryText,
+    marginBottom: 6,
+  },
+  techStatusLabel: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 7.5,
+    letterSpacing: 1,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  techStatusValue: {
+    ...typography.labelCaps,
+    color: colors.primaryText,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  initBottomSignalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: spacing.sm,
+  },
+  initSignalDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.gold,
     marginRight: 8,
   },
-  initStatusText: {
-    ...typography.bodySm,
-    color: colors.secondaryText,
-    fontSize: 13,
+  initSignalText: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 9,
+    letterSpacing: 1.5,
+    fontWeight: '700',
   },
+
   // ── Permission State ──
   permissionHeader: {
     flexDirection: 'row',
