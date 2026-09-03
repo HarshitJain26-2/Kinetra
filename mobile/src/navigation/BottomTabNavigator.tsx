@@ -1,7 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+/**
+ * Kinetra Bottom Tab Navigator (Section 28: Global Navigation Refinement)
+ * Exact Stitch luxury dark athletic performance-lab floating obsidian command console.
+ * Connects the 5 authenticated primary tabs with tactile spring interactions,
+ * safe-area adaptation, and accessibility semantics.
+ */
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TouchableWithoutFeedback,
+  StyleSheet,
+  Platform,
+  Animated,
+  AccessibilityInfo,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography } from '../theme';
+import { colors, typography } from '../theme';
 import { Icon, IconName } from '../components/Icon';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ExploreScreen } from '../screens/ExploreScreen';
@@ -16,36 +31,142 @@ interface TabItemConfig {
   label: string;
   icon: IconName;
   testID: string;
+  globalTestID: string;
 }
 
 const TABS: TabItemConfig[] = [
-  { name: 'Home', label: 'HOME', icon: 'home', testID: 'tab-home' },
-  { name: 'Explore', label: 'EXPLORE', icon: 'explore', testID: 'tab-explore' },
-  { name: 'Train', label: 'TRAIN', icon: 'train', testID: 'tab-train' },
-  { name: 'Stats', label: 'STATS', icon: 'stats', testID: 'tab-stats' },
-  { name: 'Profile', label: 'PROFILE', icon: 'profile', testID: 'tab-profile' },
+  { name: 'Home', label: 'HOME', icon: 'home', testID: 'tab-home', globalTestID: 'global-tab-home' },
+  { name: 'Explore', label: 'EXPLORE', icon: 'explore', testID: 'tab-explore', globalTestID: 'global-tab-explore' },
+  { name: 'Train', label: 'TRAIN', icon: 'train', testID: 'tab-train', globalTestID: 'global-tab-train' },
+  { name: 'Stats', label: 'STATS', icon: 'stats', testID: 'tab-stats', globalTestID: 'global-tab-stats' },
+  { name: 'Profile', label: 'PROFILE', icon: 'profile', testID: 'tab-profile', globalTestID: 'global-tab-profile' },
 ];
 
 interface BottomTabNavigatorProps {
   navigation?: any;
 }
 
+interface TabButtonProps {
+  tab: TabItemConfig;
+  isActive: boolean;
+  onPress: () => void;
+  reduceMotion: boolean;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ tab, isActive, onPress, reduceMotion }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (reduceMotion) return;
+    Animated.spring(scale, {
+      toValue: 0.94,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 0,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    if (reduceMotion) return;
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 4,
+    }).start();
+  };
+
+  const activeColor = colors.gold;
+  const inactiveColor = 'rgba(255, 255, 255, 0.42)';
+  const tintColor = isActive ? activeColor : inactiveColor;
+
+  return (
+    <TouchableWithoutFeedback
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      testID={tab.testID}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={`${tab.label} tab`}
+    >
+      <Animated.View
+        style={[
+          styles.tabButton,
+          { transform: [{ scale }] },
+        ]}
+      >
+        {/* Active Tab Ambient Dot Indicator */}
+        {isActive && <View style={styles.activeTabTopDot} />}
+
+        <Icon
+          name={tab.icon}
+          size={20}
+          color={tintColor}
+          style={styles.tabIcon}
+        />
+        <Text
+          style={[
+            styles.tabLabel,
+            {
+              color: tintColor,
+              fontWeight: isActive ? '800' : '600',
+            },
+          ]}
+        >
+          {tab.label}
+        </Text>
+      </Animated.View>
+    </TouchableWithoutFeedback>
+  );
+};
+
 export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigation: rootNavigation }) => {
   const [activeTab, setActiveTab] = useState<MainTabName>('Home');
+  const [reduceMotion, setReduceMotion] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const combinedNavigation = {
-    navigate: (screen: string, params?: any) => {
-      if (TABS.some((t) => t.name === screen)) {
-        setActiveTab(screen as MainTabName);
-      } else if (rootNavigation?.navigate) {
-        rootNavigation.navigate(screen, params);
-      }
+  useEffect(() => {
+    let isMounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isMounted) setReduceMotion(enabled);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const combinedNavigation = useCallback(
+    {
+      navigate: (screen: string, params?: any) => {
+        if (TABS.some((t) => t.name === screen)) {
+          setActiveTab(screen as MainTabName);
+        } else if (rootNavigation?.navigate) {
+          rootNavigation.navigate(screen, params);
+        }
+      },
+      goBack: () => {
+        if (rootNavigation?.goBack) rootNavigation.goBack();
+      },
+      push: (screen: string, params?: any) => {
+        if (rootNavigation?.push) {
+          rootNavigation.push(screen, params);
+        } else if (rootNavigation?.navigate) {
+          rootNavigation.navigate(screen, params);
+        }
+      },
+      replace: (screen: string, params?: any) => {
+        if (rootNavigation?.replace) {
+          rootNavigation.replace(screen, params);
+        } else if (rootNavigation?.navigate) {
+          rootNavigation.navigate(screen, params);
+        }
+      },
     },
-    goBack: () => {
-      if (rootNavigation?.goBack) rootNavigation.goBack();
-    },
-  };
+    [rootNavigation]
+  );
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -54,7 +175,7 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
       case 'Explore':
         return <ExploreScreen navigation={combinedNavigation} />;
       case 'Train':
-        return <TrainScreen />;
+        return <TrainScreen navigation={combinedNavigation} />;
       case 'Stats':
         return <StatsScreen navigation={combinedNavigation} />;
       case 'Profile':
@@ -64,50 +185,32 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
     }
   };
 
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 8);
+
   return (
     <View style={styles.container}>
-      {/* Active Screen View */}
+      {/* Active Screen Canvas */}
       <View style={styles.screenContainer}>{renderActiveScreen()}</View>
 
-      {/* Bottom Navigation Bar */}
+      {/* Floating Obsidian Command Console (Tab Bar) */}
       <View
         style={[
           styles.tabBar,
           {
-            paddingBottom: Math.max(insets.bottom, 12),
-            height: 60 + Math.max(insets.bottom, 12),
+            paddingBottom: bottomPadding,
+            height: 54 + bottomPadding,
           },
         ]}
       >
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.name;
-          const activeColor = colors.gold;
-          const inactiveColor = colors.tertiaryText;
-          const tintColor = isActive ? activeColor : inactiveColor;
-
-          return (
-            <TouchableOpacity
-              key={tab.name}
-              style={styles.tabButton}
-              onPress={() => setActiveTab(tab.name)}
-              activeOpacity={0.8}
-              testID={tab.testID}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`${tab.label} tab`}
-            >
-              <Icon name={tab.icon} size={22} color={tintColor} style={styles.tabIcon} />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  { color: tintColor, fontWeight: isActive ? '700' : '500' },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {TABS.map((tab) => (
+          <TabButton
+            key={tab.name}
+            tab={tab}
+            isActive={activeTab === tab.name}
+            onPress={() => setActiveTab(tab.name)}
+            reduceMotion={reduceMotion}
+          />
+        ))}
       </View>
     </View>
   );
@@ -116,7 +219,7 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#050607',
   },
   screenContainer: {
     flex: 1,
@@ -125,19 +228,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.98)',
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    paddingTop: 8,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 6,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 8,
+        elevation: 12,
       },
     }),
   },
@@ -145,14 +248,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
+    position: 'relative',
+  },
+  activeTabTopDot: {
+    position: 'absolute',
+    top: -6,
+    width: 14,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.gold,
   },
   tabIcon: {
     marginBottom: 3,
   },
   tabLabel: {
     ...typography.labelCaps,
-    fontSize: 9,
-    letterSpacing: 1.2,
+    fontSize: 8.5,
+    letterSpacing: 1.1,
   },
 });
