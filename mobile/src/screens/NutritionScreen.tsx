@@ -1,7 +1,7 @@
 /**
- * Kinetra Nutrition Intelligence Dashboard Screen (Section 24: Nutrition Dashboard Refinement)
- * Exact Stitch luxury dark athletic performance-lab visual hierarchy, daily telemetry,
- * real meal timeline, macro balance, and diagnostic calibration states.
+ * Kinetra Nutrition Systems / System Status Diagnostics Screen (Section 27 Refinement)
+ * Exact Stitch luxury dark athletic performance-lab diagnostic console matching
+ * Image 3 (Nutrition Systems - System Status Diagnostic: States 1, 2, 3, 4, 5).
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -53,10 +53,10 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   const headerTranslateY = useRef(new Animated.Value(-10)).current;
   const identityOpacity = useRef(new Animated.Value(0)).current;
   const identityTranslateY = useRef(new Animated.Value(10)).current;
+  const consoleOpacity = useRef(new Animated.Value(0)).current;
+  const consoleTranslateY = useRef(new Animated.Value(12)).current;
   const telemetryOpacity = useRef(new Animated.Value(0)).current;
-  const telemetryTranslateY = useRef(new Animated.Value(12)).current;
-  const timelineOpacity = useRef(new Animated.Value(0)).current;
-  const timelineTranslateY = useRef(new Animated.Value(14)).current;
+  const telemetryTranslateY = useRef(new Animated.Value(14)).current;
 
   // Shimmer pulse animation for layout-preserving skeletons
   const shimmerPulse = useRef(new Animated.Value(0.4)).current;
@@ -112,15 +112,15 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
         headerTranslateY.setValue(0);
         identityOpacity.setValue(1);
         identityTranslateY.setValue(0);
+        consoleOpacity.setValue(1);
+        consoleTranslateY.setValue(0);
         telemetryOpacity.setValue(1);
         telemetryTranslateY.setValue(0);
-        timelineOpacity.setValue(1);
-        timelineTranslateY.setValue(0);
         return;
       }
 
       entranceAnim = Animated.stagger(65, [
-        // Phase 1: Header
+        // Phase 1: Diagnostic System Header
         Animated.parallel([
           Animated.timing(headerOpacity, {
             toValue: 1,
@@ -135,7 +135,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             useNativeDriver: true,
           }),
         ]),
-        // Phase 2: Editorial Dashboard Identity
+        // Phase 2: Editorial Diagnostic Identity
         Animated.parallel([
           Animated.timing(identityOpacity, {
             toValue: 1,
@@ -150,7 +150,22 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             useNativeDriver: true,
           }),
         ]),
-        // Phase 3: Calorie & Macro Intelligence
+        // Phase 3: Primary Diagnostic Console
+        Animated.parallel([
+          Animated.timing(consoleOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(consoleTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 4: Telemetry & Activity Matrix
         Animated.parallel([
           Animated.timing(telemetryOpacity, {
             toValue: 1,
@@ -159,21 +174,6 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             useNativeDriver: true,
           }),
           Animated.timing(telemetryTranslateY, {
-            toValue: 0,
-            duration: 350,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        // Phase 4: Meal Timeline & Quick Actions
-        Animated.parallel([
-          Animated.timing(timelineOpacity, {
-            toValue: 1,
-            duration: 350,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(timelineTranslateY, {
             toValue: 0,
             duration: 350,
             easing: Easing.out(Easing.cubic),
@@ -289,7 +289,17 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
     ? `${Math.max(0, targetCalories - displayConsumedCalories)}`
     : (targetCalories ? `${Math.round(targetCalories * 0.35)}` : '--');
 
-  // Daily Status Determination based strictly on real state
+  // Check if baseline user profile has sufficient data
+  const hasInsufficientData = !userProfile?.height_cm && !userProfile?.weight_kg && !nutritionProfile?.daily_cal_target;
+
+  // System Readiness & Daily Status (Derived from real state)
+  const isSystemReady = !hasInsufficientData && !error && targetCalories !== null;
+  const readinessLabel = error
+    ? 'TELEMETRY INTERRUPTED'
+    : hasInsufficientData
+    ? 'CALIBRATION REQUIRED'
+    : 'READY';
+
   const dailyStatusLabel =
     !targetCalories
       ? 'CALIBRATION REQUIRED'
@@ -305,9 +315,6 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
   const fatTarget = nutritionProfile?.fat_g || (mealPlan?.meals ? Math.round(mealPlan.meals.reduce((sum, m) => sum + m.fat_g, 0)) : null);
 
   const curatedMeals: MealPlanItem[] = mealPlan?.meals || [];
-
-  // Check if baseline user profile has sufficient data
-  const hasInsufficientData = !userProfile?.height_cm && !userProfile?.weight_kg && !nutritionProfile?.daily_cal_target;
 
   const handleCompleteProfile = () => {
     if (navigation?.navigate) {
@@ -334,7 +341,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* 1. TOP HEADER */}
+      {/* 1. DIAGNOSTIC SYSTEM HEADER */}
       <Animated.View
         style={[
           styles.header,
@@ -381,7 +388,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
         </TouchableWithoutFeedback>
       </Animated.View>
 
-      {/* 2. SCROLLABLE DASHBOARD CONTENT */}
+      {/* 2. SCROLLABLE DIAGNOSTIC CONSOLE CONTENT */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -394,64 +401,119 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
           />
         }
       >
-        {/* State 1: Layout-Preserving Skeleton Loading (Stitch Image 2 State 1) */}
+        {/* 2. EDITORIAL DIAGNOSTIC IDENTITY (Image 3) */}
+        <Animated.View
+          style={[
+            styles.identityBlock,
+            {
+              opacity: identityOpacity,
+              transform: [{ translateY: identityTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.identityEyebrowRow}>
+            <Text style={styles.eyebrowText}>NUTRITION SYSTEMS // DIAGNOSTICS</Text>
+            <View style={[
+              styles.readinessPill,
+              isSystemReady ? styles.readinessPillReady : styles.readinessPillWarning,
+            ]}>
+              <View style={[
+                styles.readinessDot,
+                isSystemReady ? styles.readinessDotReady : styles.readinessDotWarning,
+              ]} />
+              <Text style={[
+                styles.readinessPillText,
+                isSystemReady ? styles.readinessPillTextReady : styles.readinessPillTextWarning,
+              ]}>
+                {readinessLabel}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.pageTitle}>Nutrition Systems</Text>
+          <Text style={styles.pageSubtitle}>
+            System Status Diagnostic. Evaluating physiological telemetry and precision fuel calibration.
+          </Text>
+        </Animated.View>
+
+        {/* 3. DIAGNOSTIC STATES DISPLAY */}
         {loading && !refreshing ? (
+          /* State 1: Processing Data (Image 3 State 1) */
           <View
-            style={styles.skeletonContainer}
+            style={styles.diagnosticStateSection}
             testID="nutrition-dashboard-loading"
           >
-            <View testID="nutrition-loading-state">
-              <Animated.View style={[styles.skeletonTitleBlock, { opacity: shimmerPulse }]} />
+            <View style={styles.stateHeadingRow}>
+              <Icon name="sparkle" size={12} color={colors.gold} style={{ marginRight: 6 }} />
+              <Text style={styles.stateHeadingText}>State 1: Processing Data</Text>
+            </View>
+
+            <View testID="nutrition-loading-state" style={styles.skeletonContainer}>
+              <Animated.View style={[styles.skeletonTelemetryConsole, { opacity: shimmerPulse }]} />
               <Animated.View style={[styles.skeletonDailyCard, { opacity: shimmerPulse }]} />
               <Animated.View style={[styles.skeletonMacroCard, { opacity: shimmerPulse }]} />
               <Animated.View style={[styles.skeletonTimelineCard, { opacity: shimmerPulse }]} />
             </View>
           </View>
         ) : error ? (
-          /* State 3: Connection Interrupted / Telemetry Failed (Stitch Image 2 State 3) */
+          /* State 3 / State 4: Connection Interrupted / Telemetry Failed (Image 3 State 3) */
           <View
-            style={styles.diagnosticCard}
+            style={styles.diagnosticStateSection}
             testID="nutrition-error-state"
           >
-            <View style={styles.iconBoxError}>
-              <Icon name="wifi-off" size={28} color={colors.crimson} />
+            <View style={styles.stateHeadingRow}>
+              <View style={styles.crimsonWarningTriangle} />
+              <Text style={[styles.stateHeadingText, { color: colors.crimson }]}>
+                State 3: Connection Interrupted
+              </Text>
             </View>
-            <Text style={styles.diagnosticTitle}>CONNECTION INTERRUPTED</Text>
-            <Text style={styles.diagnosticSubtitle}>
-              {error || 'Unable to synchronize nutrition data with Kinetra servers. Please verify local network integrity.'}
-            </Text>
-            <TouchableWithoutFeedback
-              {...retryBtnSpring}
-              onPress={fetchNutritionData}
-              testID="nutrition-dashboard-retry"
-              accessibilityRole="button"
-              accessibilityLabel="Retry server connection"
-            >
-              <Animated.View
-                style={[
-                  styles.retryButton,
-                  { transform: [{ scale: retryBtnScale }] },
-                ]}
+
+            <View style={styles.diagnosticCard}>
+              <View style={styles.iconBoxError}>
+                <Icon name="wifi-off" size={28} color={colors.crimson} />
+              </View>
+              <Text style={styles.diagnosticTitle}>Telemetry Failed</Text>
+              <Text style={styles.diagnosticSubtitle}>
+                {error || 'Unable to synchronize nutrition data with Kinetra servers. Please verify local network integrity.'}
+              </Text>
+              <TouchableWithoutFeedback
+                {...retryBtnSpring}
+                onPress={fetchNutritionData}
+                testID="nutrition-dashboard-retry"
+                accessibilityRole="button"
+                accessibilityLabel="Retry server connection"
               >
-                <Text style={styles.retryButtonText} testID="nutrition-retry-button">
-                  RETRY CONNECTION ⟳
-                </Text>
-              </Animated.View>
-            </TouchableWithoutFeedback>
+                <Animated.View
+                  style={[
+                    styles.retryButton,
+                    { transform: [{ scale: retryBtnScale }] },
+                  ]}
+                >
+                  <Text style={styles.retryButtonText} testID="nutrition-retry-button">
+                    RETRY CONNECTION ⟳
+                  </Text>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+            </View>
           </View>
         ) : hasInsufficientData ? (
-          /* State 2: Profile Calibration Diagnostic / Insufficient Data (Stitch Image 2 State 2) */
+          /* State 2: Awaiting Profile / Insufficient Data (Image 3 State 2) */
           <View
-            style={styles.diagnosticCard}
+            style={styles.diagnosticStateSection}
             testID="nutrition-dashboard-insufficient-data"
           >
-            <View testID="nutrition-insufficient-data-state" style={{ width: '100%', alignItems: 'center' }}>
+            <View style={styles.stateHeadingRow}>
+              <View style={styles.amberWarningCircle} />
+              <Text style={styles.stateHeadingText}>State 2: Awaiting Profile</Text>
+            </View>
+
+            <View style={styles.diagnosticCard} testID="nutrition-insufficient-data-state">
               <View style={styles.iconBoxCutlery}>
                 <Icon name="cutlery" size={28} color={colors.gold} />
               </View>
-              <Text style={styles.diagnosticTitle}>INSUFFICIENT DATA</Text>
+              <Text style={styles.diagnosticTitle}>Insufficient Data</Text>
               <Text style={styles.diagnosticSubtitle}>
-                Macro targets and daily nutrition intelligence require baseline physiological metrics to calculate optimal precision output.
+                Macro targets and meal plans require baseline physiological metrics to calculate optimal precision output.
               </Text>
 
               <View style={styles.insufficientMetricsRow}>
@@ -487,42 +549,56 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             </View>
           </View>
         ) : (
-          /* Populated Nutrition Intelligence Dashboard */
+          /* State 5: System Ready / Calibrated Telemetry Console */
           <>
-            {/* 2. EDITORIAL DASHBOARD IDENTITY */}
+            {/* PRIMARY DIAGNOSTIC CONSOLE CARD */}
             <Animated.View
               style={[
-                styles.titleBlock,
+                styles.diagnosticConsoleCard,
                 {
-                  opacity: titleOpacity,
-                  transform: [{ translateY: titleTranslateY }],
+                  opacity: consoleOpacity,
+                  transform: [{ translateY: consoleTranslateY }],
                 },
               ]}
             >
-              <View style={styles.titleEyebrowRow}>
-                <Text style={styles.eyebrowText}>PERFORMANCE FUEL // DAILY STATUS</Text>
-                <View style={[
-                  styles.statusPill,
-                  dailyStatusLabel === 'ON TRACK' && styles.statusPillOnTrack,
-                  dailyStatusLabel === 'NO INTAKE LOGGED' && styles.statusPillMuted,
-                ]}>
-                  <Text style={[
-                    styles.statusPillText,
-                    dailyStatusLabel === 'ON TRACK' && styles.statusPillTextOnTrack,
-                  ]}>
-                    {dailyStatusLabel}
-                  </Text>
+              <View style={styles.consoleHeaderRow}>
+                <View style={styles.consoleHeaderLeft}>
+                  <View style={styles.goldIndicatorBar} />
+                  <Text style={styles.consoleHeaderTitle}>SYSTEM TELEMETRY</Text>
+                </View>
+                <View style={styles.calibratedTagPill}>
+                  <Text style={styles.calibratedTagText}>CALIBRATED</Text>
                 </View>
               </View>
 
-              <Text style={styles.pageTitle}>NUTRITION DASHBOARD</Text>
-              <Text style={styles.pageSubtitle}>
-                Track today's intake, fuel your training, and maintain precision across every meal.
-              </Text>
-              <Text style={styles.goalMetaText}>{goalTitle}</Text>
+              {/* Status Checklist Grid */}
+              <View style={styles.telemetryStatusRows}>
+                <View style={styles.telemetryStatusRow}>
+                  <Text style={styles.telemetryFieldLabel}>NUTRITION ENGINE</Text>
+                  <Text style={styles.telemetryFieldValueGold}>ONLINE</Text>
+                </View>
+                <View style={styles.telemetryStatusRow}>
+                  <Text style={styles.telemetryFieldLabel}>PROFILE</Text>
+                  <Text style={styles.telemetryFieldValueMuted}>
+                    {userProfile?.height_cm && userProfile?.weight_kg ? 'CALIBRATED' : 'INCOMPLETE'}
+                  </Text>
+                </View>
+                <View style={styles.telemetryStatusRow}>
+                  <Text style={styles.telemetryFieldLabel}>DAILY INTAKE</Text>
+                  <Text style={styles.telemetryFieldValueMuted}>
+                    {dailyLogs.length > 0 ? `${dailyLogs.length} LOGS RECORDED` : 'NO DATA'}
+                  </Text>
+                </View>
+                <View style={styles.telemetryStatusRow}>
+                  <Text style={styles.telemetryFieldLabel}>RECOMMENDATION ENGINE</Text>
+                  <Text style={styles.telemetryFieldValueMuted}>
+                    {curatedMeals.length > 0 ? 'READY' : 'AWAITING PROFILE'}
+                  </Text>
+                </View>
+              </View>
             </Animated.View>
 
-            {/* 3. DAILY CALORIE INTELLIGENCE CARD */}
+            {/* DAILY ENERGY CALORIE INTELLIGENCE CARD */}
             <Animated.View
               style={[
                 styles.dailyCard,
@@ -535,7 +611,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             >
               <View testID="nutrition-daily-intake-card" style={{ width: '100%', alignItems: 'center' }}>
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeaderLabel}>DAILY ENERGY</Text>
+                  <Text style={styles.cardHeaderLabel}>DAILY INTAKE</Text>
                   <Text style={styles.targetStatusHint}>
                     {targetCalories ? 'PRECISION TARGET' : 'CALIBRATION REQUIRED'}
                   </Text>
@@ -543,7 +619,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
 
                 <Text style={styles.calorieHeadline}>
                   {consumedCaloriesDisplay}
-                  <Text style={styles.calorieTarget}> / {targetCaloriesDisplay} KCAL</Text>
+                  <Text style={styles.calorieTarget}> / {targetCaloriesDisplay} kcal</Text>
                 </Text>
 
                 <Text style={styles.remainingKcalText}>
@@ -561,7 +637,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
               </View>
             </Animated.View>
 
-            {/* 4. MACRO INTELLIGENCE CARD */}
+            {/* MACRO INTELLIGENCE CARD */}
             <Animated.View
               style={[
                 styles.macroCard,
@@ -574,7 +650,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
             >
               <View testID="nutrition-macronutrients-card">
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeaderLabel}>MACRO BALANCE</Text>
+                  <Text style={styles.cardHeaderLabel}>MACRONUTRIENTS</Text>
                   <Text style={styles.macroSubtitle}>TARGET VS CONSUMED</Text>
                 </View>
 
@@ -601,13 +677,13 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
               </View>
             </Animated.View>
 
-            {/* 5. TODAY'S MEAL TIMELINE (TODAY'S FUEL) */}
+            {/* State 3: NO FUEL LOGGED OR ACTIVE MEAL TIMELINE */}
             <Animated.View
               style={[
                 styles.timelineSection,
                 {
-                  opacity: timelineOpacity,
-                  transform: [{ translateY: timelineTranslateY }],
+                  opacity: telemetryOpacity,
+                  transform: [{ translateY: telemetryTranslateY }],
                 },
               ]}
               testID="nutrition-dashboard-meal-timeline"
@@ -637,16 +713,36 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
                 </TouchableWithoutFeedback>
               </View>
 
-              {/* RENDER ACTUAL MEAL TIMELINE OR EMPTY STATE */}
               {dailyLogs.length === 0 ? (
+                /* State 3: No Intake Logged State */
                 <View style={styles.emptyTimelineCard} testID="nutrition-dashboard-log-meal">
                   <View style={styles.emptyTimelineIconBox}>
                     <Icon name="cutlery" size={24} color={colors.tertiaryText} />
                   </View>
                   <Text style={styles.emptyTimelineTitle}>NO FUEL LOGGED</Text>
                   <Text style={styles.emptyTimelineSub}>
-                    Your daily nutrition timeline will populate as meals are recorded into your training ledger.
+                    Your nutrition ledger is calibrated, but today's intake has not been recorded into your training ledger.
                   </Text>
+
+                  <View style={styles.zeroTelemetryRow}>
+                    <View style={styles.zeroTelemetryBox}>
+                      <Text style={styles.zeroTelemetryLabel}>CALORIES</Text>
+                      <Text style={styles.zeroTelemetryVal}>0 KCAL</Text>
+                    </View>
+                    <View style={styles.zeroTelemetryBox}>
+                      <Text style={styles.zeroTelemetryLabel}>PROTEIN</Text>
+                      <Text style={styles.zeroTelemetryVal}>0 G</Text>
+                    </View>
+                    <View style={styles.zeroTelemetryBox}>
+                      <Text style={styles.zeroTelemetryLabel}>CARBS</Text>
+                      <Text style={styles.zeroTelemetryVal}>0 G</Text>
+                    </View>
+                    <View style={styles.zeroTelemetryBox}>
+                      <Text style={styles.zeroTelemetryLabel}>FAT</Text>
+                      <Text style={styles.zeroTelemetryVal}>0 G</Text>
+                    </View>
+                  </View>
+
                   <TouchableWithoutFeedback
                     {...emptyLogBtnSpring}
                     onPress={handleOpenLogModal}
@@ -702,20 +798,20 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
               )}
             </Animated.View>
 
-            {/* 6. CURATED PERFORMANCE RECOMMENDATIONS */}
+            {/* CURATED PERFORMANCE RECOMMENDATIONS */}
             <Animated.View
               style={[
                 styles.curatedSection,
                 {
-                  opacity: timelineOpacity,
-                  transform: [{ translateY: timelineTranslateY }],
+                  opacity: telemetryOpacity,
+                  transform: [{ translateY: telemetryTranslateY }],
                 },
               ]}
               testID="nutrition-curated-section"
             >
               <View style={styles.curatedHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>PERFORMANCE RECOMMENDATIONS</Text>
+                  <Text style={styles.sectionTitle}>Curated for You</Text>
                   <Text style={styles.sectionSubtitle}>Calibrated whole food protocols</Text>
                 </View>
 
@@ -812,17 +908,126 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl + 24,
   },
 
-  // Skeleton Loading Layout
-  skeletonContainer: {
-    gap: 16,
-    paddingTop: spacing.sm,
+  // ── Editorial Diagnostic Identity ──
+  identityBlock: {
+    marginBottom: spacing.md,
   },
-  skeletonTitleBlock: {
-    width: '60%',
-    height: 38,
+  identityEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  eyebrowText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 8.5,
+    letterSpacing: 1.5,
+    fontWeight: '800',
+  },
+  readinessPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  readinessPillReady: {
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+  },
+  readinessPillWarning: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  readinessDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginRight: 5,
+  },
+  readinessDotReady: {
+    backgroundColor: colors.gold,
+  },
+  readinessDotWarning: {
+    backgroundColor: colors.tertiaryText,
+  },
+  readinessPillText: {
+    ...typography.labelCaps,
+    fontSize: 8,
+    letterSpacing: 1,
+    fontWeight: '800',
+  },
+  readinessPillTextReady: {
+    color: colors.gold,
+  },
+  readinessPillTextWarning: {
+    color: colors.tertiaryText,
+  },
+  pageTitle: {
+    ...typography.headlineLg,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    color: colors.primaryText,
+    fontSize: 28,
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    ...typography.bodySm,
+    color: colors.secondaryText,
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+
+  // ── Diagnostic State Section Header (Image 3) ──
+  diagnosticStateSection: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  stateHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  stateHeadingText: {
+    ...typography.headlineSm,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    color: colors.gold,
+    fontSize: 15,
+  },
+  amberWarningCircle: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#E9C46A',
+    marginRight: 8,
+  },
+  crimsonWarningTriangle: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderBottomWidth: 7,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: colors.crimson,
+    marginRight: 8,
+  },
+
+  // ── Skeleton Layout ──
+  skeletonContainer: {
+    gap: 14,
+  },
+  skeletonTelemetryConsole: {
+    width: '100%',
+    height: 140,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: borderRadius.xs,
-    marginBottom: 8,
+    borderRadius: borderRadius.md,
   },
   skeletonDailyCard: {
     width: '100%',
@@ -843,74 +1048,88 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
 
-  // Editorial Identity Section
-  titleBlock: {
+  // ── Primary Diagnostic Console Card ──
+  diagnosticConsoleCard: {
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: spacing.lg,
     marginBottom: spacing.lg,
   },
-  titleEyebrowRow: {
+  consoleHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    paddingBottom: spacing.sm,
   },
-  eyebrowText: {
+  consoleHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  goldIndicatorBar: {
+    width: 3,
+    height: 13,
+    backgroundColor: colors.gold,
+    marginRight: 8,
+    borderRadius: 1.5,
+  },
+  consoleHeaderTitle: {
+    ...typography.labelCaps,
+    color: colors.primaryText,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontWeight: '800',
+  },
+  calibratedTagPill: {
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.3)',
+  },
+  calibratedTagText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  telemetryStatusRows: {
+    gap: 8,
+  },
+  telemetryStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  telemetryFieldLabel: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 8.5,
+    letterSpacing: 1.2,
+    fontWeight: '700',
+  },
+  telemetryFieldValueGold: {
     ...typography.labelCaps,
     color: colors.gold,
     fontSize: 8.5,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     fontWeight: '800',
   },
-  statusPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  statusPillOnTrack: {
-    backgroundColor: 'rgba(217, 184, 63, 0.12)',
-    borderColor: 'rgba(217, 184, 63, 0.35)',
-  },
-  statusPillMuted: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  statusPillText: {
+  telemetryFieldValueMuted: {
     ...typography.labelCaps,
-    color: colors.tertiaryText,
-    fontSize: 8,
-    letterSpacing: 1,
-    fontWeight: '800',
-  },
-  statusPillTextOnTrack: {
-    color: colors.gold,
-  },
-  pageTitle: {
-    ...typography.headlineLg,
-    fontFamily: 'serif',
-    fontWeight: '700',
-    color: colors.primaryText,
-    fontSize: 28,
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    ...typography.bodySm,
     color: colors.secondaryText,
-    fontSize: 12.5,
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  goalMetaText: {
-    ...typography.labelCaps,
-    color: colors.gold,
-    fontSize: 9,
+    fontSize: 8.5,
     letterSpacing: 1.2,
     fontWeight: '700',
   },
 
-  // Daily Intake Card
+  // ── Daily Intake Card ──
   dailyCard: {
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
@@ -963,7 +1182,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  // Macro Card
+  // ── Macro Card ──
   macroCard: {
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
@@ -979,7 +1198,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Meal Timeline Section
+  // ── Meal Timeline Section ──
   timelineSection: {
     marginBottom: spacing.lg,
   },
@@ -1049,6 +1268,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: spacing.md,
     maxWidth: '85%',
+  },
+  zeroTelemetryRow: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: 'rgba(25, 27, 30, 0.95)',
+    borderRadius: borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 8,
+    marginBottom: spacing.md,
+  },
+  zeroTelemetryBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  zeroTelemetryLabel: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 7.5,
+    letterSpacing: 1,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  zeroTelemetryVal: {
+    ...typography.headlineSm,
+    fontFamily: 'serif',
+    color: colors.gold,
+    fontSize: 12,
+    fontWeight: '700',
   },
   logFirstMealBtn: {
     backgroundColor: colors.gold,
@@ -1121,7 +1369,7 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
   },
 
-  // Curated Section
+  // ── Curated Section ──
   curatedSection: {
     marginTop: spacing.xs,
   },
@@ -1180,7 +1428,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
-  // Diagnostics & Insufficient Data Styles (Stitch Image 2)
+  // ── Diagnostics & Insufficient Data Styles (Image 3) ──
   diagnosticCard: {
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
@@ -1188,7 +1436,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.xl,
     alignItems: 'center',
-    marginTop: spacing.md,
   },
   iconBoxCutlery: {
     width: 64,
