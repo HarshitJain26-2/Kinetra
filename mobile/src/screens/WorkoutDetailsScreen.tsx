@@ -1,3 +1,8 @@
+/**
+ * Kinetra Workout Details Screen (Section 20: Workout Details / Protocol Intelligence Refinement)
+ * Exact Stitch luxury dark athletic performance-lab design matching training protocol reference.
+ */
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -15,7 +20,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { Icon } from '../components/Icon';
-import { KinetraButton } from '../components/KinetraButton';
 import { images } from '../assets';
 import { apiClient, WorkoutItem, WorkoutExerciseItem } from '../api/client';
 import { ScreenProps } from '../navigation/types';
@@ -32,20 +36,20 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
   const [error, setError] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
 
-  // 6-Phase Staggered Entrance Animations
-  const heroOpacity = useRef(new Animated.Value(0)).current;
-  const heroScale = useRef(new Animated.Value(1.04)).current;
+  // 4-Phase Staggered Entrance Animations
   const headerOpacity = useRef(new Animated.Value(0)).current;
-  const headerTranslateY = useRef(new Animated.Value(-12)).current;
+  const headerTranslateY = useRef(new Animated.Value(-10)).current;
   const identityOpacity = useRef(new Animated.Value(0)).current;
-  const identityTranslateY = useRef(new Animated.Value(18)).current;
+  const identityTranslateY = useRef(new Animated.Value(10)).current;
   const metadataOpacity = useRef(new Animated.Value(0)).current;
-  const metadataTranslateY = useRef(new Animated.Value(14)).current;
+  const metadataTranslateY = useRef(new Animated.Value(12)).current;
   const protocolOpacity = useRef(new Animated.Value(0)).current;
   const protocolTranslateY = useRef(new Animated.Value(14)).current;
   const ctaOpacity = useRef(new Animated.Value(0)).current;
   const ctaTranslateY = useRef(new Animated.Value(16)).current;
 
+  // Hero scale animation
+  const heroScale = useRef(new Animated.Value(1.04)).current;
   // Skeleton shimmer pulse
   const shimmerPulse = useRef(new Animated.Value(0.4)).current;
 
@@ -55,7 +59,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
   const startBtnScale = useRef(new Animated.Value(1)).current;
   const manualBtnScale = useRef(new Animated.Value(1)).current;
 
-  // 1. Data Fetching
+  // 1. Data Fetching with graceful initialWorkout preservation
   useEffect(() => {
     let isMounted = true;
     const fetchFullWorkout = async () => {
@@ -68,7 +72,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
       } catch (err: any) {
         if (isMounted) {
           if (!workout) {
-            setError(err?.message || 'Unable to load workout protocol details.');
+            setError(err?.message || 'Unable to retrieve training protocol.');
           }
           setLoading(false);
         }
@@ -92,8 +96,6 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
       if (!isMounted) return;
 
       if (reduceMotion) {
-        heroOpacity.setValue(1);
-        heroScale.setValue(1);
         headerOpacity.setValue(1);
         headerTranslateY.setValue(0);
         identityOpacity.setValue(1);
@@ -104,56 +106,48 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
         protocolTranslateY.setValue(0);
         ctaOpacity.setValue(1);
         ctaTranslateY.setValue(0);
+        heroScale.setValue(1);
         return;
       }
 
-      entranceSequence = Animated.stagger(60, [
-        // Phase 1: Hero & Background
-        Animated.parallel([
-          Animated.timing(heroOpacity, {
-            toValue: 1,
-            duration: 400,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(heroScale, {
-            toValue: 1,
-            duration: 450,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        // Phase 2: Header
+      entranceSequence = Animated.stagger(65, [
+        // Phase 1: Header Bar
         Animated.parallel([
           Animated.timing(headerOpacity, {
             toValue: 1,
-            duration: 350,
+            duration: 320,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(headerTranslateY, {
             toValue: 0,
-            duration: 350,
+            duration: 320,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-        ]),
-        // Phase 3: Identity & Title
-        Animated.parallel([
-          Animated.timing(identityOpacity, {
+          Animated.timing(heroScale, {
             toValue: 1,
             duration: 400,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
+        ]),
+        // Phase 2: Hero & Protocol Identity
+        Animated.parallel([
+          Animated.timing(identityOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
           Animated.timing(identityTranslateY, {
             toValue: 0,
-            duration: 400,
+            duration: 350,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
         ]),
-        // Phase 4: Metadata Matrix
+        // Phase 3: Metadata Summary & Description
         Animated.parallel([
           Animated.timing(metadataOpacity, {
             toValue: 1,
@@ -168,7 +162,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
             useNativeDriver: true,
           }),
         ]),
-        // Phase 5: Protocol Exercises
+        // Phase 4: Circuit Protocol Exercises & Primary CTA
         Animated.parallel([
           Animated.timing(protocolOpacity, {
             toValue: 1,
@@ -182,18 +176,15 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-        ]),
-        // Phase 6: Primary CTA
-        Animated.parallel([
           Animated.timing(ctaOpacity, {
             toValue: 1,
-            duration: 400,
+            duration: 350,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(ctaTranslateY, {
             toValue: 0,
-            duration: 400,
+            duration: 350,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
@@ -231,13 +222,13 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
   }, []);
 
   // Tactile spring press feedback generator
-  const createSpring = (val: Animated.Value, to: number, back: number) => ({
+  const createSpring = (val: Animated.Value, down = 0.95, back = 1) => ({
     onPressIn: () => {
       Animated.spring(val, {
-        toValue: to,
+        toValue: down,
         useNativeDriver: true,
         speed: 40,
-        bounciness: 0,
+        bounciness: 3,
       }).start();
     },
     onPressOut: () => {
@@ -250,8 +241,8 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
     },
   });
 
-  const backBtnSpring = createSpring(backBtnScale, 0.92, 1);
-  const bookmarkBtnSpring = createSpring(bookmarkBtnScale, 0.92, 1);
+  const backBtnSpring = createSpring(backBtnScale, 0.90, 1);
+  const bookmarkBtnSpring = createSpring(bookmarkBtnScale, 0.90, 1);
   const startBtnSpring = createSpring(startBtnScale, 0.965, 1);
   const manualBtnSpring = createSpring(manualBtnScale, 0.965, 1);
 
@@ -344,7 +335,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
             accessibilityRole="button"
             testID="workout-details-back-button"
           >
-            <Icon name="back" size={18} color={colors.primaryText} />
+            <Icon name="back" size={17} color={colors.gold} />
           </TouchableOpacity>
         </SafeAreaView>
 
@@ -370,7 +361,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER ERROR / EMPTY STATE
+  // RENDER ERROR STATE
   // ─────────────────────────────────────────────────────────────────────────────
   if (error && !workout) {
     return (
@@ -383,14 +374,14 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
             accessibilityRole="button"
             testID="workout-details-back-button"
           >
-            <Icon name="back" size={18} color={colors.primaryText} />
+            <Icon name="back" size={17} color={colors.gold} />
           </TouchableOpacity>
         </SafeAreaView>
 
         <View style={styles.errorContainer}>
           <View style={styles.errorCard}>
             <Icon name="warning" size={32} color={colors.crimson} />
-            <Text style={styles.errorTitle}>WORKOUT PROTOCOL UNAVAILABLE</Text>
+            <Text style={styles.errorTitle}>CONNECTION INTERRUPTED</Text>
             <Text style={styles.errorMessage}>{error}</Text>
             <TouchableOpacity
               style={styles.errorRetryButton}
@@ -422,10 +413,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
         <Animated.View
           style={[
             styles.heroContainer,
-            {
-              opacity: heroOpacity,
-              transform: [{ scale: heroScale }],
-            },
+            { transform: [{ scale: heroScale }] },
           ]}
         >
           <ImageBackground
@@ -462,9 +450,11 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
                         { transform: [{ scale: backBtnScale }] },
                       ]}
                     >
-                      <Icon name="back" size={18} color={colors.primaryText} />
+                      <Icon name="back" size={17} color={colors.gold} />
                     </Animated.View>
                   </TouchableWithoutFeedback>
+
+                  <Text style={styles.headerBrand}>KINETRA</Text>
 
                   <TouchableWithoutFeedback
                     {...bookmarkBtnSpring}
@@ -481,7 +471,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
                     >
                       <Icon
                         name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                        size={18}
+                        size={17}
                         color={isBookmarked ? colors.gold : colors.primaryText}
                       />
                     </Animated.View>
@@ -583,7 +573,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
             </View>
           ) : null}
 
-          {/* CIRCUIT PROTOCOL EXERCISES */}
+          {/* CIRCUIT PROTOCOL EXERCISES (Example Structure Matching Reference) */}
           <View style={styles.circuitSection}>
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionHeaderIndicator} />
@@ -604,9 +594,10 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
                   item.exercise?.category ||
                   item.category ||
                   'Compound Movement';
-                const setsCount = item.target_sets || 3;
-                const repsCount = item.target_reps || 10;
-                const orderIndex = (index + 1).toString().padStart(2, '0');
+                const setsCount = (item.target_sets || 3).toString().padStart(2, '0');
+                const repsCount = (item.target_reps || 10).toString().padStart(2, '0');
+                const restSec = item.rest_seconds ? `${item.rest_seconds}S` : '90S';
+                const orderIndex = `A${index + 1}`;
 
                 return (
                   <View
@@ -614,32 +605,35 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
                     style={styles.exerciseCard}
                     testID={`exercise-item-${index}`}
                   >
-                    {/* Numerical Index Badge */}
-                    <Text style={styles.exerciseIndexNumber}>{orderIndex}</Text>
-
-                    {/* Exercise Thumbnail */}
-                    <View style={styles.exerciseThumb}>
-                      <Icon name="train" size={18} color={colors.gold} />
-                    </View>
-
-                    {/* Exercise Info */}
-                    <View style={styles.exerciseInfo}>
-                      <Text style={styles.exerciseNameText} numberOfLines={1}>
-                        {exerciseName}
-                      </Text>
-                      <Text style={styles.exerciseMuscleText} numberOfLines={1}>
-                        {targetMuscle.toUpperCase()}
-                      </Text>
-                    </View>
-
-                    {/* Sets & Reps Target Badges */}
-                    <View style={styles.exerciseTargetContainer}>
-                      <View style={styles.setsBadge}>
-                        <Text style={styles.setsText}>{setsCount} SETS</Text>
+                    {/* Top Row: Index + Name + Muscle Group */}
+                    <View style={styles.exerciseCardTopRow}>
+                      <Text style={styles.exerciseIndexTag}>{orderIndex}</Text>
+                      <View style={styles.exerciseTitleWrap}>
+                        <Text style={styles.exerciseNameText} numberOfLines={1}>
+                          {exerciseName.toUpperCase()}
+                        </Text>
+                        <Text style={styles.exerciseMuscleText} numberOfLines={1}>
+                          {targetMuscle.toUpperCase()}
+                        </Text>
                       </View>
-                      <Text style={styles.repsText}>
-                        {repsCount} {item.target_reps ? 'REPS' : 'SEC'}
-                      </Text>
+                    </View>
+
+                    {/* Bottom Row: 3-Column Metrics Grid (SETS | REPS | REST) */}
+                    <View style={styles.exerciseMetricsGrid}>
+                      <View style={styles.exerciseMetricCol}>
+                        <Text style={styles.exerciseMetricLabel}>SETS</Text>
+                        <Text style={styles.exerciseMetricValue}>{setsCount}</Text>
+                      </View>
+                      <View style={styles.exerciseMetricColDivider} />
+                      <View style={styles.exerciseMetricCol}>
+                        <Text style={styles.exerciseMetricLabel}>REPS</Text>
+                        <Text style={styles.exerciseMetricValue}>{repsCount}</Text>
+                      </View>
+                      <View style={styles.exerciseMetricColDivider} />
+                      <View style={styles.exerciseMetricCol}>
+                        <Text style={styles.exerciseMetricLabel}>REST</Text>
+                        <Text style={styles.exerciseMetricValue}>{restSec}</Text>
+                      </View>
                     </View>
                   </View>
                 );
@@ -648,7 +642,7 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
               <View style={styles.emptyExercisesCard}>
                 <Icon name="pulse" size={24} color={colors.gold} />
                 <Text style={styles.emptyExercisesText}>
-                  Full biomechanical exercise protocol will be loaded during session initialization.
+                  Full biomechanical exercise protocol will be calibrated during session initialization.
                 </Text>
               </View>
             )}
@@ -669,14 +663,15 @@ export const WorkoutDetailsScreen: React.FC<ScreenProps<'WorkoutDetails'>> = ({
       >
         <TouchableWithoutFeedback {...startBtnSpring}>
           <Animated.View style={{ transform: [{ scale: startBtnScale }] }}>
-            <KinetraButton
-              title="⚡ START LIVE VISION"
-              variant="primary"
-              onPress={handleStartWorkout}
+            <TouchableOpacity
               style={styles.startWorkoutButton}
-              textStyle={styles.startWorkoutText}
+              onPress={handleStartWorkout}
               testID="workout-details-start-button"
-            />
+              accessibilityRole="button"
+              accessibilityLabel="Start Live Vision Workout"
+            >
+              <Text style={styles.startWorkoutText}>⚡ START LIVE VISION →</Text>
+            </TouchableOpacity>
           </Animated.View>
         </TouchableWithoutFeedback>
 
@@ -710,7 +705,7 @@ const styles = StyleSheet.create({
   // ── Hero Section ──
   heroContainer: {
     width: '100%',
-    height: 390,
+    height: 380,
   },
   heroBackground: {
     width: '100%',
@@ -733,7 +728,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 220,
-    backgroundColor: 'rgba(5, 6, 7, 0.85)',
+    backgroundColor: 'rgba(5, 6, 7, 0.9)',
   },
   heroInnerContent: {
     flex: 1,
@@ -750,13 +745,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
   },
+  headerBrand: {
+    ...typography.brandWordmarkSmall,
+    color: colors.gold,
+    fontSize: 14,
+    letterSpacing: 4,
+    fontWeight: '800',
+  },
   navSquareButton: {
-    width: 42,
-    height: 42,
-    borderRadius: borderRadius.sm,
-    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(217, 184, 63, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -770,9 +772,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   heroEyebrowDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.gold,
   },
   categoryLabel: {
@@ -838,7 +840,7 @@ const styles = StyleSheet.create({
   },
   metadataCard: {
     flex: 1,
-    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -905,7 +907,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   descriptionCard: {
-    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -921,42 +923,34 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   exerciseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.md,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  exerciseIndexNumber: {
+  exerciseCardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  exerciseIndexTag: {
     fontFamily: 'serif',
     color: colors.gold,
-    fontSize: 12,
-    fontWeight: '800',
-    width: 24,
+    fontSize: 15,
+    fontWeight: '700',
+    width: 30,
   },
-  exerciseThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.xs,
-    backgroundColor: 'rgba(217, 184, 63, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(217, 184, 63, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  exerciseInfo: {
+  exerciseTitleWrap: {
     flex: 1,
-    justifyContent: 'center',
   },
   exerciseNameText: {
     ...typography.bodyMd,
     color: colors.primaryText,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 13.5,
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
   exerciseMuscleText: {
@@ -966,36 +960,42 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontWeight: '700',
   },
-  exerciseTargetContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  setsBadge: {
-    backgroundColor: 'rgba(217, 184, 63, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(217, 184, 63, 0.4)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  exerciseMetricsGrid: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(25, 27, 30, 0.95)',
     borderRadius: borderRadius.xs,
-    marginBottom: 3,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  setsText: {
+  exerciseMetricCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  exerciseMetricColDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  exerciseMetricLabel: {
     ...typography.labelCaps,
-    color: colors.gold,
-    fontSize: 9,
+    color: colors.tertiaryText,
+    fontSize: 8.5,
+    letterSpacing: 1.2,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    marginBottom: 2,
   },
-  repsText: {
-    ...typography.labelCaps,
-    color: colors.secondaryText,
-    fontSize: 9,
-    letterSpacing: 0.8,
+  exerciseMetricValue: {
+    ...typography.headlineSm,
+    fontFamily: 'serif',
+    color: colors.primaryText,
+    fontSize: 14,
     fontWeight: '700',
   },
   emptyExercisesCard: {
     padding: spacing.xl,
-    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -1023,10 +1023,23 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   startWorkoutButton: {
-    backgroundColor: colors.goldBright,
-    height: 52,
+    backgroundColor: colors.gold,
+    height: 50,
     borderRadius: borderRadius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   startWorkoutText: {
     ...typography.labelCaps,
@@ -1036,11 +1049,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
   },
   startManualBtn: {
-    backgroundColor: 'rgba(18, 20, 22, 0.9)',
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.xs,
     borderWidth: 1,
-    borderColor: colors.borderGold,
-    height: 46,
+    borderColor: 'rgba(217, 184, 63, 0.4)',
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1121,7 +1134,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.crimson,
+    borderColor: 'rgba(230, 57, 70, 0.4)',
     padding: spacing.xl,
     alignItems: 'center',
   },
@@ -1158,4 +1171,3 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
-
