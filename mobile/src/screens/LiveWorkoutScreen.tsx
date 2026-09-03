@@ -122,6 +122,18 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const initTechRowOpacity = useRef(new Animated.Value(0)).current;
   const initPulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Dedicated Error / Connection Interrupted Animations
+  const errorBgOpacity = useRef(new Animated.Value(0)).current;
+  const errorCardOpacity = useRef(new Animated.Value(0)).current;
+  const errorCardScale = useRef(new Animated.Value(0.96)).current;
+  const errorTextOpacity = useRef(new Animated.Value(0)).current;
+  const errorTextTranslateY = useRef(new Animated.Value(10)).current;
+  const errorCtaOpacity = useRef(new Animated.Value(0)).current;
+  const errorCtaTranslateY = useRef(new Animated.Value(12)).current;
+  const errorPulseAnim = useRef(new Animated.Value(1)).current;
+  const retryButtonScale = useRef(new Animated.Value(1)).current;
+
+
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -391,6 +403,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const resumeBtnSpring = createSpring(resumeButtonScale, 0.96, 1);
   const continueBtnSpring = createSpring(continueButtonScale, 0.96, 1);
   const editBtnSpring = createSpring(editButtonScale, 0.95, 1);
+  const retryBtnSpring = createSpring(retryButtonScale, 0.94, 1);
 
   // Live rep count pop animation
   useEffect(() => {
@@ -428,9 +441,118 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     ]).start();
   }, [coachingMessage]);
 
+  // 3b. Dedicated Error / Connection Interrupted Entrance Sequence
+  useEffect(() => {
+    if (sessionState !== 'ERROR' && !errorMessage) return;
+
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+
+    const runErrorEntrance = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        errorBgOpacity.setValue(1);
+        errorCardOpacity.setValue(1);
+        errorCardScale.setValue(1);
+        errorTextOpacity.setValue(1);
+        errorTextTranslateY.setValue(0);
+        errorCtaOpacity.setValue(1);
+        errorCtaTranslateY.setValue(0);
+        return;
+      }
+
+      entranceAnim = Animated.stagger(60, [
+        // Phase 1: Background
+        Animated.timing(errorBgOpacity, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        // Phase 2: Error icon/card
+        Animated.parallel([
+          Animated.timing(errorCardOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(errorCardScale, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.back(1.1)),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 3: Heading/message
+        Animated.parallel([
+          Animated.timing(errorTextOpacity, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(errorTextTranslateY, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 4: Retry CTA
+        Animated.parallel([
+          Animated.timing(errorCtaOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(errorCtaTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]);
+
+      entranceAnim.start();
+
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(errorPulseAnim, {
+            toValue: 1.08,
+            duration: 1100,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(errorPulseAnim, {
+            toValue: 1,
+            duration: 1100,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseLoop.start();
+    };
+
+    runErrorEntrance();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+      if (pulseLoop) pulseLoop.stop();
+    };
+  }, [sessionState, errorMessage]);
+
   // 4. Dedicated Set Complete Entrance Sequence
   useEffect(() => {
     if (sessionState !== 'COMPLETED') return;
+
 
     let isMounted = true;
     let entranceAnim: Animated.CompositeAnimation | null = null;
@@ -1115,6 +1237,132 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
 
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER STATE: VISION COACH UNAVAILABLE / CONNECTION ERROR (Stitch Luxury)
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (sessionState === 'ERROR') {
+    return (
+      <View style={styles.errorRoot}>
+        {/* Atmospheric Dark Obsidian Scrim Background */}
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: errorBgOpacity }]}>
+          <ImageBackground
+            source={images.gymBarbell}
+            style={StyleSheet.absoluteFillObject}
+            imageStyle={styles.errorBgImageStyle}
+          >
+            <View style={styles.errorBackdropOverlay} />
+          </ImageBackground>
+        </Animated.View>
+
+        <SafeAreaView style={styles.errorSafeContainer} edges={['top', 'bottom']}>
+          {/* Top Branding & Navigation */}
+          <View style={styles.errorTopHeader}>
+            <TouchableOpacity
+              style={styles.errorCloseButton}
+              onPress={handleExitWorkout}
+              accessibilityRole="button"
+              accessibilityLabel="Exit Workout"
+            >
+              <Text style={styles.errorCloseIconText}>✕</Text>
+            </TouchableOpacity>
+
+            <View style={styles.errorBrandingCenter}>
+              <Text style={styles.errorBrandTitle}>KINETRA</Text>
+              <Text style={styles.errorBrandSubtitle}>VISION COACH / SYSTEM STATUS</Text>
+            </View>
+
+            <View style={{ width: 42 }} />
+          </View>
+
+          {/* Central Error Card */}
+          <Animated.View
+            style={[
+              styles.centralErrorCard,
+              {
+                opacity: errorCardOpacity,
+                transform: [{ scale: errorCardScale }],
+              },
+            ]}
+          >
+            {/* Warning Icon with Crimson Accent Circle */}
+            <View style={styles.errorIconCircle}>
+              <Icon name="warning" size={32} color={colors.crimson} />
+            </View>
+
+            {/* Heading & Supporting Message */}
+            <Animated.View
+              style={{
+                opacity: errorTextOpacity,
+                transform: [{ translateY: errorTextTranslateY }],
+                alignItems: 'center',
+                width: '100%',
+              }}
+            >
+              <Text style={styles.errorMainHeading}>VISION COACH UNAVAILABLE</Text>
+              <Text style={styles.errorSupportingText}>
+                {errorMessage || 'Connection to the on-device AI vision pipeline was interrupted.'}
+              </Text>
+
+              {/* Status Indicator */}
+              <View style={styles.errorStatusIndicatorRow}>
+                <Animated.View
+                  style={[
+                    styles.errorStatusDot,
+                    { transform: [{ scale: errorPulseAnim }] },
+                  ]}
+                />
+                <Text style={styles.errorStatusText}>CONNECTION INTERRUPTED</Text>
+              </View>
+            </Animated.View>
+
+            {/* Actions: Primary RETRY + Secondary EXIT */}
+            <Animated.View
+              style={[
+                styles.errorActionBlock,
+                {
+                  opacity: errorCtaOpacity,
+                  transform: [{ translateY: errorCtaTranslateY }],
+                },
+              ]}
+            >
+              <TouchableWithoutFeedback
+                {...retryBtnSpring}
+                onPress={handleRetryInference}
+                testID="vision-coach-retry-button"
+                accessibilityRole="button"
+                accessibilityLabel="Retry Vision Coach Inference"
+              >
+                <Animated.View
+                  style={[
+                    styles.errorRetryCta,
+                    { transform: [{ scale: retryButtonScale }] },
+                  ]}
+                >
+                  <Text style={styles.errorRetryCtaText}>RETRY</Text>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+
+              <TouchableOpacity
+                style={styles.errorExitSecondaryButton}
+                onPress={handleExitWorkout}
+                accessibilityRole="button"
+                accessibilityLabel="Exit Workout Session"
+              >
+                <Text style={styles.errorExitSecondaryText}>EXIT WORKOUT</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
+
+          {/* Bottom Standby Info */}
+          <View style={styles.errorBottomFooter}>
+            <Text style={styles.errorFooterText}>ON-DEVICE LOCAL ML • HIGH INTEGRITY PROTOCOL</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // RENDER STATE 5: ACTIVE LIVE TRACKING HUD (Matches Stitch screen.png)
   // ─────────────────────────────────────────────────────────────────────────────
   return (
@@ -1215,24 +1463,49 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
 
       {/* 5. ERROR BANNER */}
       {errorMessage && (
-        <View style={styles.errorBanner} testID="live-inference-error-banner">
+        <Animated.View
+          style={[
+            styles.errorBanner,
+            {
+              opacity: errorCardOpacity,
+              transform: [{ translateY: errorTextTranslateY }],
+            },
+          ]}
+          testID="live-inference-error-banner"
+        >
           <View style={styles.errorBannerLeft}>
-            <Icon name="warning" size={18} color={colors.crimson} />
-            <View style={{ marginLeft: 8, flex: 1 }}>
-              <Text style={styles.errorBannerTitle}>VISION COACH UNAVAILABLE</Text>
-              <Text style={styles.errorBannerSubtitle}>{errorMessage}</Text>
+            <View style={styles.errorBannerIconCircle}>
+              <Icon name="warning" size={16} color={colors.crimson} />
+            </View>
+            <View style={{ marginLeft: 10, flex: 1 }}>
+              <View style={styles.errorBannerTitleRow}>
+                <View style={styles.errorBannerMiniDot} />
+                <Text style={styles.errorBannerTitle}>VISION COACH UNAVAILABLE</Text>
+              </View>
+              <Text style={styles.errorBannerSubtitle} numberOfLines={2}>
+                {errorMessage}
+              </Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.errorRetryButton}
+          <TouchableWithoutFeedback
+            {...retryBtnSpring}
             onPress={handleRetryInference}
+            testID="vision-coach-retry-button"
             accessibilityRole="button"
             accessibilityLabel="Retry Inference"
           >
-            <Text style={styles.errorRetryText}>RETRY</Text>
-          </TouchableOpacity>
-        </View>
+            <Animated.View
+              style={[
+                styles.errorRetryButton,
+                { transform: [{ scale: retryButtonScale }] },
+              ]}
+            >
+              <Text style={styles.errorRetryText}>RETRY</Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </Animated.View>
       )}
+
 
       {/* 6. CENTER HERO HUD REPS DISPLAY (Live Biomechanical Focal Point) */}
       <Animated.View
@@ -2265,53 +2538,269 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
 
-  // ── Error Banner ──
+  // ── Vision Coach Unavailable / Connection Error State (Stitch Luxury) ──
+  errorRoot: {
+    flex: 1,
+    backgroundColor: '#050607',
+  },
+  errorBgImageStyle: {
+    opacity: 0.12,
+    resizeMode: 'cover',
+  },
+  errorBackdropOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 6, 7, 0.94)',
+  },
+  errorSafeContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  errorTopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.xs,
+  },
+  errorCloseButton: {
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorCloseIconText: {
+    color: colors.primaryText,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorBrandingCenter: {
+    alignItems: 'center',
+  },
+  errorBrandTitle: {
+    ...typography.headlineMd,
+    color: colors.primaryText,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    letterSpacing: 4,
+    fontSize: 16,
+  },
+  errorBrandSubtitle: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 8.5,
+    letterSpacing: 1.5,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  centralErrorCard: {
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(230, 57, 70, 0.45)',
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.crimson,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  errorIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(230, 57, 70, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 57, 70, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  errorMainHeading: {
+    ...typography.headlineLg,
+    color: colors.primaryText,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    fontSize: 22,
+    lineHeight: 28,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  errorSupportingText: {
+    ...typography.bodyMd,
+    color: colors.secondaryText,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  errorStatusIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(230, 57, 70, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(230, 57, 70, 0.3)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: spacing.xl,
+    gap: 7,
+  },
+  errorStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.crimson,
+  },
+  errorStatusText: {
+    ...typography.labelCaps,
+    color: colors.crimson,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    fontWeight: '800',
+  },
+  errorActionBlock: {
+    width: '100%',
+    gap: 10,
+  },
+  errorRetryCta: {
+    width: '100%',
+    height: 52,
+    backgroundColor: colors.goldBright,
+    borderRadius: borderRadius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorRetryCtaText: {
+    ...typography.labelCaps,
+    color: colors.inverseText,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    fontWeight: '800',
+  },
+  errorExitSecondaryButton: {
+    width: '100%',
+    height: 46,
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderRadius: borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorExitSecondaryText: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+  },
+  errorBottomFooter: {
+    alignItems: 'center',
+    paddingBottom: spacing.xs,
+  },
+  errorFooterText: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 8.5,
+    letterSpacing: 1.5,
+  },
+
+  // ── Error Banner in Active Tracking HUD ──
   errorBanner: {
     position: 'absolute',
     top: 110,
     left: spacing.lg,
     right: spacing.lg,
-    backgroundColor: 'rgba(23, 25, 27, 0.95)',
+    backgroundColor: 'rgba(18, 20, 22, 0.96)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.crimson,
+    borderColor: 'rgba(230, 57, 70, 0.55)',
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.crimson,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   errorBannerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  errorBannerIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(230, 57, 70, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(230, 57, 70, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  errorBannerMiniDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.crimson,
+  },
   errorBannerTitle: {
     ...typography.labelCaps,
-    color: colors.crimson,
+    color: colors.primaryText,
     fontSize: 10,
-    fontWeight: '700',
+    letterSpacing: 1,
+    fontWeight: '800',
   },
   errorBannerSubtitle: {
     ...typography.caption,
     color: colors.secondaryText,
     fontSize: 11,
+    lineHeight: 15,
   },
   errorRetryButton: {
-    backgroundColor: colors.surfaceBright,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: colors.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: borderRadius.xs,
-    marginLeft: 8,
+    marginLeft: 10,
   },
   errorRetryText: {
     ...typography.labelCaps,
-    color: colors.primaryText,
+    color: colors.inverseText,
     fontSize: 10,
-    fontWeight: '700',
+    letterSpacing: 1.2,
+    fontWeight: '800',
   },
+
 
   // ── Bottom Coaching Banner & Controls Row ──
   liveBottomContainer: {
