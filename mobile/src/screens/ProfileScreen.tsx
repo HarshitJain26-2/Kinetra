@@ -1,21 +1,28 @@
 /**
- * Kinetra Profile Screen (Phase 33)
+ * Kinetra Profile Screen (Section 14: Elite Profile Refinement)
  * Exact Stitch luxury dark athletic visual matching Screen 1 (Elite) and Screen 2 (Empty State).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   RefreshControl,
   Alert,
+  Animated,
+  Easing,
+  AccessibilityInfo,
+  Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { Icon } from '../components/Icon';
+import { images } from '../assets';
 import { useAuth } from '../context/AuthContext';
 import {
   apiClient,
@@ -37,6 +44,166 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  // Staggered Entrance Animation Values
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(-12)).current;
+  const identityOpacity = useRef(new Animated.Value(0)).current;
+  const identityTranslateY = useRef(new Animated.Value(14)).current;
+  const metricsOpacity = useRef(new Animated.Value(0)).current;
+  const metricsTranslateY = useRef(new Animated.Value(12)).current;
+  const menuOpacity = useRef(new Animated.Value(0)).current;
+  const menuTranslateY = useRef(new Animated.Value(14)).current;
+
+  // Shimmer pulse animation for loading skeleton
+  const skeletonShimmer = useRef(new Animated.Value(0.35)).current;
+
+  // Spring Button Scales
+  const settingsBtnScale = useRef(new Animated.Value(1)).current;
+  const prBtnScale = useRef(new Animated.Value(1)).current;
+  const historyBtnScale = useRef(new Animated.Value(1)).current;
+  const gearBtnScale = useRef(new Animated.Value(1)).current;
+  const exploreBtnScale = useRef(new Animated.Value(1)).current;
+
+  const createSpring = (val: Animated.Value, down = 0.94, back = 1) => ({
+    onPressIn: () => {
+      Animated.spring(val, {
+        toValue: down,
+        useNativeDriver: true,
+        speed: 40,
+        bounciness: 3,
+      }).start();
+    },
+    onPressOut: () => {
+      Animated.spring(val, {
+        toValue: back,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 4,
+      }).start();
+    },
+  });
+
+  const settingsSpring = createSpring(settingsBtnScale, 0.90, 1);
+  const prSpring = createSpring(prBtnScale, 0.98, 1);
+  const historySpring = createSpring(historyBtnScale, 0.98, 1);
+  const gearSpring = createSpring(gearBtnScale, 0.98, 1);
+  const exploreSpring = createSpring(exploreBtnScale, 0.96, 1);
+
+  // Entrance sequence & skeleton pulse
+  useEffect(() => {
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+    let shimmerLoop: Animated.CompositeAnimation | null = null;
+
+    const runEntrance = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        headerOpacity.setValue(1);
+        headerTranslateY.setValue(0);
+        identityOpacity.setValue(1);
+        identityTranslateY.setValue(0);
+        metricsOpacity.setValue(1);
+        metricsTranslateY.setValue(0);
+        menuOpacity.setValue(1);
+        menuTranslateY.setValue(0);
+        return;
+      }
+
+      entranceAnim = Animated.stagger(75, [
+        // Phase 1: Header
+        Animated.parallel([
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 2: Athlete Identity
+        Animated.parallel([
+          Animated.timing(identityOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(identityTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 3: Metrics Grid
+        Animated.parallel([
+          Animated.timing(metricsOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(metricsTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 4: Menu Items
+        Animated.parallel([
+          Animated.timing(menuOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(menuTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]);
+
+      entranceAnim.start();
+
+      shimmerLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(skeletonShimmer, {
+            toValue: 0.85,
+            duration: 1000,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(skeletonShimmer, {
+            toValue: 0.35,
+            duration: 1000,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      shimmerLoop.start();
+    };
+
+    runEntrance();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+      if (shimmerLoop) shimmerLoop.stop();
+    };
+  }, []);
 
   const fetchProfileAndSessions = useCallback(async () => {
     try {
@@ -138,20 +305,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* 1. TOP HEADER */}
-      <View style={styles.header}>
+      {/* 1. TOP HEADER (Stitch Reference) */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            opacity: headerOpacity,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+      >
         <Text style={styles.headerTitle}>PROFILE</Text>
 
-        <TouchableOpacity
-          style={styles.settingsButton}
+        <TouchableWithoutFeedback
+          {...settingsSpring}
           onPress={() => setIsSettingsOpen(true)}
           testID="profile-settings-button"
           accessibilityLabel="Open Settings"
           accessibilityRole="button"
         >
-          <Icon name="gear" size={18} color={colors.gold} />
-        </TouchableOpacity>
-      </View>
+          <Animated.View
+            style={[
+              styles.settingsButton,
+              { transform: [{ scale: settingsBtnScale }] },
+            ]}
+          >
+            <Icon name="gear" size={18} color={colors.gold} />
+          </Animated.View>
+        </TouchableWithoutFeedback>
+      </Animated.View>
 
       {/* 2. SCROLL CONTENT */}
       <ScrollView
@@ -166,177 +348,300 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           />
         }
       >
-        {/* AVATAR & IDENTITY SECTION */}
-        <View style={styles.identityCard} testID="profile-identity-card">
-          {/* Avatar Picture Frame */}
-          <View style={styles.avatarFrame}>
-            <View style={styles.avatarInner}>
-              <Text style={styles.avatarText}>{initialLetter}</Text>
+        {loading ? (
+          /* Luxury Obsidian Skeleton Loader */
+          <View style={styles.skeletonWrapper}>
+            <View style={styles.skeletonAvatarBlock}>
+              <Animated.View style={[styles.skeletonAvatar, { opacity: skeletonShimmer }]} />
+              <Animated.View style={[styles.skeletonNameBar, { opacity: skeletonShimmer }]} />
+              <Animated.View style={[styles.skeletonBadgeBar, { opacity: skeletonShimmer }]} />
             </View>
+            <View style={styles.skeletonMetricsRow}>
+              <Animated.View style={[styles.skeletonMetricCard, { opacity: skeletonShimmer }]} />
+              <Animated.View style={[styles.skeletonMetricCard, { opacity: skeletonShimmer }]} />
+            </View>
+            <Animated.View style={[styles.skeletonStreakCard, { opacity: skeletonShimmer }]} />
+            <Animated.View style={[styles.skeletonMenuCard, { opacity: skeletonShimmer }]} />
           </View>
-
-          {/* User Name */}
-          <Text style={styles.displayName} testID="profile-display-name">
-            {displayName.toUpperCase()}
-          </Text>
-
-          {/* Elite Member Badge */}
-          <View style={styles.tierBadge} testID="profile-tier-badge">
-            <Icon name="sparkle" size={12} color={colors.gold} style={{ marginRight: 5 }} />
-            <Text style={styles.tierBadgeText}>ELITE MEMBER</Text>
-          </View>
-
-          {/* Athletic Motto */}
-          <Text style={styles.bioText}>
-            Pursuing peak performance. Focused on strength, precision, and longevity.
-          </Text>
-        </View>
-
-        {/* 3. METRICS OVERVIEW OR EMPTY STATE */}
-        {hasSessions ? (
-          /* POPULATED METRICS GRID (Screen 1) */
-          <>
-            <View style={styles.metricsRow} testID="profile-metrics-populated">
-              {/* Form Score Card */}
-              <View style={styles.metricCard}>
-                <View style={styles.metricHeader}>
-                  <Text style={styles.metricLabel}>FORM SCORE</Text>
-                  <Icon name="sparkle" size={12} color={colors.gold} />
-                </View>
-                <Text style={styles.metricValue}>
-                  {formScoreDisplay}
-                  {formScoreDisplay !== '--' ? <Text style={styles.metricUnit}> /100</Text> : ''}
-                </Text>
-              </View>
-
-              {/* Sessions Card */}
-              <View style={styles.metricCard}>
-                <View style={styles.metricHeader}>
-                  <Text style={styles.metricLabel}>SESSIONS</Text>
-                  <Icon name="calendar" size={12} color={colors.gold} />
-                </View>
-                <Text style={styles.metricValue}>
-                  {sessionsDisplay}
-                  {sessionsDisplay !== '--' ? <Text style={styles.metricUnit}> TOTAL</Text> : ''}
-                </Text>
-              </View>
-            </View>
-
-            {/* Current Streak Banner */}
-            <View style={styles.streakBanner} testID="profile-streak-banner">
-              <View style={styles.streakHeader}>
-                <Text style={styles.streakLabel}>CURRENT STREAK</Text>
-                <Icon name="flame" size={14} color={colors.crimson} />
-              </View>
-              <Text style={styles.streakValue}>
-                {streakDisplay}
-                {streakDisplay !== '--' ? <Text style={styles.streakUnit}> DAYS</Text> : ''}
-              </Text>
-            </View>
-
-            {/* MENU ROWS */}
-            <View style={styles.menuContainer} testID="profile-menu-container">
-              {/* Personal Best Records */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handlePersonalBests}
-                testID="menu-personal-bests"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={styles.menuIconCircle}>
-                    <Icon name="trophy" size={16} color={colors.gold} />
-                  </View>
-                  <Text style={styles.menuItemTitle}>Personal Best Records</Text>
-                </View>
-                <Icon name="chevron-right" size={16} color={colors.tertiaryText} />
-              </TouchableOpacity>
-
-              <View style={styles.menuDivider} />
-
-              {/* Activity History */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleActivityHistory}
-                testID="menu-activity-history"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={styles.menuIconCircle}>
-                    <Icon name="history" size={16} color={colors.gold} />
-                  </View>
-                  <Text style={styles.menuItemTitle}>Activity History</Text>
-                </View>
-                <Icon name="chevron-right" size={16} color={colors.tertiaryText} />
-              </TouchableOpacity>
-
-              <View style={styles.menuDivider} />
-
-              {/* Kinetra Gear */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleKinetraGear}
-                testID="menu-kinetra-gear"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={styles.menuIconCircle}>
-                    <Icon name="diamond" size={16} color={colors.gold} />
-                  </View>
-                  <Text style={styles.menuItemTitle}>Kinetra Gear</Text>
-                </View>
-                <Icon name="chevron-right" size={16} color={colors.tertiaryText} />
-              </TouchableOpacity>
-            </View>
-          </>
         ) : (
-          /* EMPTY STATE (Screen 2) */
           <>
-            {/* 3-Column Biometrics Chip Row */}
-            <View style={styles.chipsRow} testID="profile-chips-row">
-              <View style={styles.chipCard}>
-                <Text style={styles.chipLabel}>WEIGHT</Text>
-                <Text style={styles.chipValue}>
-                  {profileData?.weight_kg ? `${profileData.weight_kg}` : '--'}
-                </Text>
-                <Text style={styles.chipUnit}>KG</Text>
-              </View>
-
-              <View style={styles.chipCard}>
-                <Text style={styles.chipLabel}>BODY FAT</Text>
-                <Text style={styles.chipValue}>--</Text>
-                <Text style={styles.chipUnit}>%</Text>
-              </View>
-
-              <View style={styles.chipCard}>
-                <Text style={styles.chipLabel}>TARGET</Text>
-                <Text style={styles.chipValue}>--</Text>
-                <Text style={styles.chipUnit}>CAL</Text>
-              </View>
-            </View>
-
-            {/* Activity History Empty State Card */}
-            <View style={styles.emptyHistoryCard} testID="profile-empty-history-card">
-              <Text style={styles.emptySectionTitle}>Activity History</Text>
-
-              <View style={styles.emptyContent}>
-                <View style={styles.emptyIconCircle}>
-                  <Icon name="history" size={24} color={colors.tertiaryText} />
+            {/* AVATAR & IDENTITY SECTION (Stitch Reference Screen 1) */}
+            <Animated.View
+              style={[
+                styles.identityCard,
+                {
+                  opacity: identityOpacity,
+                  transform: [{ translateY: identityTranslateY }],
+                },
+              ]}
+              testID="profile-identity-card"
+            >
+              {/* Luxury Squircle Avatar with Gold Halo & Athlete Photo */}
+              <View style={styles.avatarFrame}>
+                <View style={styles.avatarInner}>
+                  <Image
+                    source={images.heroAthlete}
+                    style={styles.avatarPhoto}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.avatarOverlay} />
+                  {/* Subtle initial letter watermark if photo fails */}
+                  <Text style={styles.avatarWatermark}>{initialLetter}</Text>
                 </View>
 
-                <Text style={styles.emptyPromptTitle}>NO RECENT ACTIVITY.</Text>
-                <Text style={styles.emptyPromptSubtitle}>START YOUR ELITE JOURNEY.</Text>
-
-                <TouchableOpacity
-                  style={styles.exploreButton}
-                  onPress={handleExploreWorkouts}
-                  testID="profile-explore-workouts-button"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.exploreButtonText}>EXPLORE WORKOUTS →</Text>
-                </TouchableOpacity>
+                {/* Camera / Edit status indicator dot */}
+                <View style={styles.avatarStatusBadge}>
+                  <Icon name="sparkle" size={10} color={colors.gold} />
+                </View>
               </View>
-            </View>
+
+              {/* User Name */}
+              <Text style={styles.displayName} testID="profile-display-name">
+                {displayName.toUpperCase()}
+              </Text>
+
+              {/* Elite Member Badge */}
+              <View style={styles.tierBadge} testID="profile-tier-badge">
+                <Icon name="sparkle" size={11} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={styles.tierBadgeText}>ELITE MEMBER</Text>
+              </View>
+
+              {/* Athletic Motto */}
+              <Text style={styles.bioText}>
+                Pursuing peak performance. Focused on strength, precision, and longevity.
+              </Text>
+            </Animated.View>
+
+            {/* 3. METRICS OVERVIEW OR EMPTY STATE */}
+            {hasSessions ? (
+              /* POPULATED METRICS GRID (Stitch Reference Screen 1) */
+              <>
+                <Animated.View
+                  style={{
+                    opacity: metricsOpacity,
+                    transform: [{ translateY: metricsTranslateY }],
+                  }}
+                >
+                  <View style={styles.metricsRow} testID="profile-metrics-populated">
+                    {/* Form Score Card */}
+                    <View style={styles.metricCard}>
+                      <View style={styles.metricHeader}>
+                        <Text style={styles.metricLabel}>FORM SCORE</Text>
+                        <Icon name="sparkle" size={12} color={colors.gold} />
+                      </View>
+                      <Text style={styles.metricValue}>
+                        {formScoreDisplay}
+                        {formScoreDisplay !== '--' ? (
+                          <Text style={styles.metricUnit}> /100</Text>
+                        ) : (
+                          ''
+                        )}
+                      </Text>
+                      {/* Form score accent track */}
+                      <View style={styles.miniScoreTrack}>
+                        <View
+                          style={[
+                            styles.miniScoreFill,
+                            {
+                              width: `${Math.min(
+                                100,
+                                Math.max(10, analytics?.avgFormScore ?? 90)
+                              )}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Sessions Card */}
+                    <View style={styles.metricCard}>
+                      <View style={styles.metricHeader}>
+                        <Text style={styles.metricLabel}>SESSIONS</Text>
+                        <Icon name="calendar" size={12} color={colors.gold} />
+                      </View>
+                      <Text style={styles.metricValue}>
+                        {sessionsDisplay}
+                        {sessionsDisplay !== '--' ? (
+                          <Text style={styles.metricUnit}> TOTAL</Text>
+                        ) : (
+                          ''
+                        )}
+                      </Text>
+                      {/* Subtle baseline track */}
+                      <View style={styles.miniScoreTrack}>
+                        <View style={[styles.miniScoreFill, { width: '85%' }]} />
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Current Streak Banner */}
+                  <View style={styles.streakBanner} testID="profile-streak-banner">
+                    <View style={styles.streakHeader}>
+                      <Text style={styles.streakLabel}>CURRENT STREAK</Text>
+                      <Icon name="flame" size={14} color={colors.crimson} />
+                    </View>
+                    <Text style={styles.streakValue}>
+                      {streakDisplay}
+                      {streakDisplay !== '--' ? (
+                        <Text style={styles.streakUnit}> DAYS</Text>
+                      ) : (
+                        ''
+                      )}
+                    </Text>
+                  </View>
+                </Animated.View>
+
+                {/* MENU ROWS (Stitch Reference Screen 1) */}
+                <Animated.View
+                  style={[
+                    styles.menuContainer,
+                    {
+                      opacity: menuOpacity,
+                      transform: [{ translateY: menuTranslateY }],
+                    },
+                  ]}
+                  testID="profile-menu-container"
+                >
+                  {/* Personal Best Records */}
+                  <TouchableWithoutFeedback
+                    {...prSpring}
+                    onPress={handlePersonalBests}
+                    testID="menu-personal-bests"
+                    accessibilityRole="button"
+                    accessibilityLabel="Personal Best Records"
+                  >
+                    <Animated.View
+                      style={[
+                        styles.menuItem,
+                        { transform: [{ scale: prBtnScale }] },
+                      ]}
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <View style={styles.menuIconCircle}>
+                          <Icon name="trophy" size={16} color={colors.gold} />
+                        </View>
+                        <Text style={styles.menuItemTitle}>Personal Best Records</Text>
+                      </View>
+                      <Icon name="chevron-right" size={14} color={colors.tertiaryText} />
+                    </Animated.View>
+                  </TouchableWithoutFeedback>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Activity History */}
+                  <TouchableWithoutFeedback
+                    {...historySpring}
+                    onPress={handleActivityHistory}
+                    testID="menu-activity-history"
+                    accessibilityRole="button"
+                    accessibilityLabel="Activity History"
+                  >
+                    <Animated.View
+                      style={[
+                        styles.menuItem,
+                        { transform: [{ scale: historyBtnScale }] },
+                      ]}
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <View style={styles.menuIconCircle}>
+                          <Icon name="history" size={16} color={colors.gold} />
+                        </View>
+                        <Text style={styles.menuItemTitle}>Activity History</Text>
+                      </View>
+                      <Icon name="chevron-right" size={14} color={colors.tertiaryText} />
+                    </Animated.View>
+                  </TouchableWithoutFeedback>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Kinetra Gear */}
+                  <TouchableWithoutFeedback
+                    {...gearSpring}
+                    onPress={handleKinetraGear}
+                    testID="menu-kinetra-gear"
+                    accessibilityRole="button"
+                    accessibilityLabel="Kinetra Gear"
+                  >
+                    <Animated.View
+                      style={[
+                        styles.menuItem,
+                        { transform: [{ scale: gearBtnScale }] },
+                      ]}
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <View style={styles.menuIconCircle}>
+                          <Icon name="diamond" size={16} color={colors.gold} />
+                        </View>
+                        <Text style={styles.menuItemTitle}>Kinetra Gear</Text>
+                      </View>
+                      <Icon name="chevron-right" size={14} color={colors.tertiaryText} />
+                    </Animated.View>
+                  </TouchableWithoutFeedback>
+                </Animated.View>
+              </>
+            ) : (
+              /* EMPTY STATE (Stitch Reference Screen 2) */
+              <Animated.View
+                style={{
+                  opacity: metricsOpacity,
+                  transform: [{ translateY: metricsTranslateY }],
+                }}
+              >
+                {/* 3-Column Biometrics Chip Row */}
+                <View style={styles.chipsRow} testID="profile-chips-row">
+                  <View style={styles.chipCard}>
+                    <Text style={styles.chipLabel}>WEIGHT</Text>
+                    <Text style={styles.chipValue}>
+                      {profileData?.weight_kg ? `${profileData.weight_kg}` : '--'}
+                    </Text>
+                    <Text style={styles.chipUnit}>KG</Text>
+                  </View>
+
+                  <View style={styles.chipCard}>
+                    <Text style={styles.chipLabel}>BODY FAT</Text>
+                    <Text style={styles.chipValue}>--</Text>
+                    <Text style={styles.chipUnit}>%</Text>
+                  </View>
+
+                  <View style={styles.chipCard}>
+                    <Text style={styles.chipLabel}>TARGET</Text>
+                    <Text style={styles.chipValue}>--</Text>
+                    <Text style={styles.chipUnit}>CAL</Text>
+                  </View>
+                </View>
+
+                {/* Activity History Empty State Card */}
+                <View style={styles.emptyHistoryCard} testID="profile-empty-history-card">
+                  <Text style={styles.emptySectionTitle}>Activity History</Text>
+
+                  <View style={styles.emptyContent}>
+                    <View style={styles.emptyIconCircle}>
+                      <Icon name="history" size={24} color={colors.tertiaryText} />
+                    </View>
+
+                    <Text style={styles.emptyPromptTitle}>NO RECENT ACTIVITY.</Text>
+                    <Text style={styles.emptyPromptSubtitle}>START YOUR ELITE JOURNEY.</Text>
+
+                    <TouchableWithoutFeedback
+                      {...exploreSpring}
+                      onPress={handleExploreWorkouts}
+                      testID="profile-explore-workouts-button"
+                      accessibilityRole="button"
+                      accessibilityLabel="Explore Workouts"
+                    >
+                      <Animated.View
+                        style={[
+                          styles.exploreButton,
+                          { transform: [{ scale: exploreBtnScale }] },
+                        ]}
+                      >
+                        <Text style={styles.exploreButtonText}>EXPLORE WORKOUTS →</Text>
+                      </Animated.View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </View>
+              </Animated.View>
+            )}
           </>
         )}
       </ScrollView>
@@ -347,7 +652,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#050607',
   },
   header: {
     flexDirection: 'row',
@@ -356,73 +661,163 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerTitle: {
     ...typography.headlineMd,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 22,
+    lineHeight: 28,
     color: colors.primaryText,
     fontFamily: 'serif',
     fontWeight: '700',
     letterSpacing: 3,
   },
   settingsButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceDim,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + 24,
   },
+
+  // Skeleton Loader Styles
+  skeletonWrapper: {
+    gap: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  skeletonAvatarBlock: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  skeletonAvatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  skeletonNameBar: {
+    width: 160,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  skeletonBadgeBar: {
+    width: 110,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  skeletonMetricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skeletonMetricCard: {
+    flex: 1,
+    height: 96,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  skeletonStreakCard: {
+    width: '100%',
+    height: 84,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  skeletonMenuCard: {
+    width: '100%',
+    height: 160,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+
+  // Athlete Identity Block (Stitch Reference)
   identityCard: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   avatarFrame: {
-    width: 104,
-    height: 104,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.surfaceDim,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: 6,
+    width: 96,
+    height: 96,
+    borderRadius: 18,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 184, 63, 0.45)',
+    padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   avatarInner: {
     width: '100%',
     height: '100%',
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceBright,
-    borderWidth: 1,
-    borderColor: colors.borderGold,
+    borderRadius: 15,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(25, 27, 30, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    ...typography.headlineLg,
+  avatarPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 6, 7, 0.25)',
+  },
+  avatarWatermark: {
+    position: 'absolute',
     fontFamily: 'serif',
     fontWeight: '700',
-    color: colors.gold,
-    fontSize: 34,
+    color: 'rgba(217, 184, 63, 0.18)',
+    fontSize: 48,
+  },
+  avatarStatusBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 17, 19, 0.95)',
+    borderWidth: 1,
+    borderColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   displayName: {
     ...typography.headlineMd,
     fontFamily: 'serif',
     fontWeight: '700',
     color: colors.primaryText,
-    letterSpacing: 1.8,
+    letterSpacing: 2,
     fontSize: 22,
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
   },
   tierBadge: {
@@ -430,7 +825,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(217, 184, 63, 0.12)',
     borderWidth: 1,
-    borderColor: colors.borderGold,
+    borderColor: 'rgba(217, 184, 63, 0.45)',
     borderRadius: borderRadius.full,
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -439,17 +834,20 @@ const styles = StyleSheet.create({
   tierBadgeText: {
     ...typography.labelCaps,
     color: colors.gold,
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
   },
   bioText: {
     ...typography.bodySm,
     color: colors.secondaryText,
     textAlign: 'center',
     lineHeight: 20,
-    maxWidth: 280,
+    fontSize: 12.5,
+    maxWidth: 290,
   },
+
+  // Populated Metrics Overview Grid
   metricsRow: {
     flexDirection: 'row',
     gap: 12,
@@ -457,12 +855,12 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.md,
-    minHeight: 88,
+    minHeight: 96,
     justifyContent: 'space-between',
   },
   metricHeader: {
@@ -475,27 +873,42 @@ const styles = StyleSheet.create({
     ...typography.labelCaps,
     color: colors.tertiaryText,
     fontSize: 9,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
+    fontWeight: '800',
   },
   metricValue: {
     ...typography.headlineMd,
     fontFamily: 'serif',
     fontWeight: '700',
     color: colors.primaryText,
-    fontSize: 24,
+    fontSize: 28,
   },
   metricUnit: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.tertiaryText,
     fontWeight: '500',
+    fontFamily: 'System',
+  },
+  miniScoreTrack: {
+    width: '100%',
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 1.5,
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  miniScoreFill: {
+    height: '100%',
+    backgroundColor: colors.gold,
+    borderRadius: 1.5,
   },
   streakBanner: {
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   streakHeader: {
     flexDirection: 'row',
@@ -507,25 +920,29 @@ const styles = StyleSheet.create({
     ...typography.labelCaps,
     color: colors.tertiaryText,
     fontSize: 9,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
+    fontWeight: '800',
   },
   streakValue: {
     ...typography.headlineMd,
     fontFamily: 'serif',
     fontWeight: '700',
     color: colors.primaryText,
-    fontSize: 24,
+    fontSize: 28,
   },
   streakUnit: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.tertiaryText,
     fontWeight: '500',
+    fontFamily: 'System',
   },
+
+  // Menu List Actions Block
   menuContainer: {
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
     marginBottom: spacing.xl,
   },
@@ -534,32 +951,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   menuIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceBright,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   menuItemTitle: {
     ...typography.bodyMd,
     color: colors.primaryText,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: colors.borderLight,
-    marginLeft: 56,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginLeft: 60,
   },
+
+  // Empty State Biometric Chips
   chipsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -567,11 +988,11 @@ const styles = StyleSheet.create({
   },
   chipCard: {
     flex: 1,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingVertical: 12,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 14,
     paddingHorizontal: 8,
     alignItems: 'center',
   },
@@ -595,11 +1016,13 @@ const styles = StyleSheet.create({
     color: colors.secondaryText,
     fontSize: 9,
   },
+
+  // Empty Activity History Card
   emptyHistoryCard: {
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.lg,
     marginBottom: spacing.xl,
   },
@@ -608,7 +1031,7 @@ const styles = StyleSheet.create({
     fontFamily: 'serif',
     fontWeight: '700',
     color: colors.primaryText,
-    fontSize: 16,
+    fontSize: 17,
     marginBottom: spacing.lg,
   },
   emptyContent: {
@@ -616,10 +1039,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   emptyIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surfaceBright,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -640,12 +1065,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   exploreButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(217, 184, 63, 0.1)',
     borderWidth: 1,
     borderColor: colors.borderGold,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.sm,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.xs,
   },
   exploreButtonText: {
     ...typography.labelCaps,
