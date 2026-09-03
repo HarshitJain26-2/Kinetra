@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/images/splash-bg.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#050607"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kinetra.app",

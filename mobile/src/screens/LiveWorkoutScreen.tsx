@@ -65,7 +65,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
 
   // Runner Reference
   const runnerRef = useRef<MobilePoseRunner | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -408,7 +408,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   return (
     <View style={styles.container}>
       {/* 1. CAMERA VIEW */}
-      <CameraView style={StyleSheet.absoluteFillObject} facing={facing} />
+      <CameraView style={StyleSheet.absoluteFill} facing={facing} />
 
       {/* 2. SKELETON & FRAMING OVERLAY */}
       <PoseSkeletonOverlay

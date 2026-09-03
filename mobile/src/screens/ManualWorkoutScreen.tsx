@@ -67,7 +67,7 @@ export const ManualWorkoutScreen: React.FC<ManualWorkoutScreenProps> = ({
   // Rest Timer State
   const [isResting, setIsResting] = useState(false);
   const [restSecondsRemaining, setRestSecondsRemaining] = useState(75);
-  const restTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const restTimerRef = useRef<any>(null);
 
   // Initialize Session
   useEffect(() => {

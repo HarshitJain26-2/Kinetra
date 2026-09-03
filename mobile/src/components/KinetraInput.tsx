@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TextInputProps,
   ViewStyle,
   TextStyle,
+  Pressable,
 } from 'react-native';
 import { colors, borderRadius, spacing, typography } from '../theme';
 
@@ -33,6 +34,7 @@ export const KinetraInput: React.FC<KinetraInputProps> = ({
   ...restProps
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const internalInputRef = useRef<TextInput>(null);
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
@@ -44,6 +46,10 @@ export const KinetraInput: React.FC<KinetraInputProps> = ({
     onBlur?.(e);
   };
 
+  const handleContainerPress = () => {
+    internalInputRef.current?.focus();
+  };
+
   return (
     <View style={[styles.wrapper, containerStyle]}>
       {(label || headerRight) && (
@@ -53,7 +59,8 @@ export const KinetraInput: React.FC<KinetraInputProps> = ({
         </View>
       )}
 
-      <View
+      <Pressable
+        onPress={handleContainerPress}
         style={[
           styles.inputContainer,
           isFocused && styles.inputFocused,
@@ -63,16 +70,18 @@ export const KinetraInput: React.FC<KinetraInputProps> = ({
         {leftIcon && <View style={styles.leftIconWrapper}>{leftIcon}</View>}
 
         <TextInput
+          ref={internalInputRef}
           style={[styles.input, inputStyle]}
           placeholderTextColor={colors.placeholderText}
           selectionColor={colors.gold}
+          editable={true}
           onFocus={handleFocus}
           onBlur={handleBlur}
           {...restProps}
         />
 
         {rightIcon && <View style={styles.rightIconWrapper}>{rightIcon}</View>}
-      </View>
+      </Pressable>
 
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -96,7 +105,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     height: spacing.inputHeight,
-    backgroundColor: '#FFFFFF', // High-contrast clean white background as seen in Stitch reference
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.xs,
     flexDirection: 'row',
     alignItems: 'center',
@@ -127,8 +136,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
-    ...typography.bodyMd,
-    color: '#111415', // Dark text on white input
+    fontSize: 14,
+    fontFamily: typography.bodyMd.fontFamily,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    color: '#111415',
     fontWeight: '500',
   },
   errorText: {

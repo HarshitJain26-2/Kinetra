@@ -46,7 +46,7 @@ export const RootNavigator: React.FC = () => {
         initialRouteName={session ? 'Main' : 'Splash'}
         screenOptions={{
           headerShown: false,
-          animation: 'fade',
+          animation: 'slide_from_right',
           contentStyle: { backgroundColor: colors.background },
         }}
       >

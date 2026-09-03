@@ -3,13 +3,13 @@ import {
   ImageBackground,
   StyleSheet,
   View,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ImageSourcePropType,
   ViewStyle,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
 export interface ScreenBackgroundProps {
@@ -29,6 +29,7 @@ export const ScreenBackground: React.FC<ScreenBackgroundProps> = ({
 }) => {
   const content = scrollable ? (
     <ScrollView
+      style={styles.scrollView}
       contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -55,7 +56,7 @@ export const ScreenBackground: React.FC<ScreenBackgroundProps> = ({
           >
             <SafeAreaView style={styles.safeArea}>
               <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.keyboardAvoid}
               >
                 {content}
@@ -66,7 +67,7 @@ export const ScreenBackground: React.FC<ScreenBackgroundProps> = ({
       ) : (
         <SafeAreaView style={styles.safeArea}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.keyboardAvoid}
           >
             {content}
@@ -103,5 +104,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
 });

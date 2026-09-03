@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { ScreenProps } from '../navigation/types';
 import { ScreenBackground } from '../components/ScreenBackground';
@@ -24,26 +24,42 @@ export const SignUpScreen: React.FC<ScreenProps<'SignUp'>> = ({ navigation }) =>
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
 
+  // Synchronous submission lock to guarantee ONE request per button press
+  const isSubmittingRef = useRef<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+
   const handleSignUp = async () => {
-    clearError();
-    const nameValidation = validateFullName(fullName);
-    const emailValidation = validateEmail(email);
-    const passValidation = validatePassword(password);
-
-    setNameError(nameValidation.error);
-    setEmailError(emailValidation.error);
-    setPasswordError(passValidation.error);
-
-    if (!nameValidation.isValid || !emailValidation.isValid || !passValidation.isValid) {
+    // Immediate lock check: prevent duplicate or rapid repeat taps
+    if (isSubmittingRef.current || loading || submitting) {
       return;
     }
+    isSubmittingRef.current = true;
+    setSubmitting(true);
+    clearError();
 
-    const success = await signUp(email, password, fullName);
-    if (success) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
+    try {
+      const nameValidation = validateFullName(fullName);
+      const emailValidation = validateEmail(email);
+      const passValidation = validatePassword(password);
+
+      setNameError(nameValidation.error);
+      setEmailError(emailValidation.error);
+      setPasswordError(passValidation.error);
+
+      if (!nameValidation.isValid || !emailValidation.isValid || !passValidation.isValid) {
+        return;
+      }
+
+      const success = await signUp(email, password, fullName);
+      if (success) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      }
+    } finally {
+      isSubmittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -119,7 +135,8 @@ export const SignUpScreen: React.FC<ScreenProps<'SignUp'>> = ({ navigation }) =>
           title="CREATE ACCOUNT  →"
           variant="primary"
           onPress={handleSignUp}
-          loading={loading}
+          loading={loading || submitting}
+          disabled={loading || submitting}
           style={styles.submitButton}
           testID="signup-submit-button"
         />
@@ -147,7 +164,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.marginMobile,
     paddingVertical: spacing.lg,
-    minHeight: '100%',
+    flexGrow: 1,
   },
   topBranding: {
     alignItems: 'center',

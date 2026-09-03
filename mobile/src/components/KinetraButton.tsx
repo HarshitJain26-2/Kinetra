@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -37,6 +37,16 @@ export const KinetraButton: React.FC<KinetraButtonProps> = ({
   testID,
 }) => {
   const isInteractive = !loading && !disabled;
+  const lastPressRef = useRef<number>(0);
+
+  const handlePress = () => {
+    const now = Date.now();
+    if (now - lastPressRef.current < 750) {
+      return;
+    }
+    lastPressRef.current = now;
+    onPress();
+  };
 
   const getContainerStyle = (): ViewStyle => {
     switch (variant) {
@@ -77,7 +87,7 @@ export const KinetraButton: React.FC<KinetraButtonProps> = ({
     <TouchableOpacity
       testID={testID}
       activeOpacity={0.8}
-      onPress={isInteractive ? onPress : undefined}
+      onPress={isInteractive ? handlePress : undefined}
       disabled={!isInteractive}
       style={[
         styles.baseContainer,

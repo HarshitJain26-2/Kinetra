@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../config/supabase';
 import { sanitizeAuthError } from '../utils/authErrors';
@@ -22,6 +22,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Mutex guards to strictly prevent concurrent duplicate requests from any caller
+  const isSigningInRef = useRef<boolean>(false);
+  const isSigningUpRef = useRef<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,6 +62,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearError = () => setError(null);
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
+    // Immediate synchronous in-flight guard
+    if (isSigningInRef.current) {
+      return false;
+    }
+    isSigningInRef.current = true;
     setError(null);
     setLoading(true);
     try {
@@ -66,7 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mockUser: any = { id: 'mock-athlete-id', email: email.trim() };
         setUser(mockUser);
         setSession({ user: mockUser } as any);
-        setLoading(false);
         return true;
       }
 
@@ -77,22 +85,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (signInError) {
         setError(sanitizeAuthError(signInError));
-        setLoading(false);
         return false;
       }
 
       setUser(data.user);
       setSession(data.session);
-      setLoading(false);
       return true;
     } catch (err) {
       setError(sanitizeAuthError(err));
-      setLoading(false);
       return false;
+    } finally {
+      isSigningInRef.current = false;
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string): Promise<boolean> => {
+    // Immediate synchronous in-flight guard to prevent duplicate concurrent network calls
+    if (isSigningUpRef.current) {
+      return false;
+    }
+    isSigningUpRef.current = true;
     setError(null);
     setLoading(true);
     try {
@@ -100,7 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mockUser: any = { id: 'mock-athlete-id', email: email.trim(), user_metadata: { full_name: fullName.trim() } };
         setUser(mockUser);
         setSession({ user: mockUser } as any);
-        setLoading(false);
         return true;
       }
 
@@ -116,18 +128,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (signUpError) {
         setError(sanitizeAuthError(signUpError));
-        setLoading(false);
         return false;
       }
 
       setUser(data.user);
       setSession(data.session);
-      setLoading(false);
       return true;
     } catch (err) {
       setError(sanitizeAuthError(err));
-      setLoading(false);
       return false;
+    } finally {
+      isSigningUpRef.current = false;
+      setLoading(false);
     }
   };
 
