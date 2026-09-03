@@ -287,6 +287,7 @@ export const MealRecommendationsScreen: React.FC<MealRecommendationsScreenProps>
               styles.navCircleButton,
               { transform: [{ scale: backBtnScale }] },
             ]}
+            testID="recommendations-back-button"
           >
             <Icon name="back" size={17} color={colors.gold} />
           </Animated.View>
@@ -488,7 +489,7 @@ export const MealRecommendationsScreen: React.FC<MealRecommendationsScreenProps>
                   accessibilityRole="button"
                   accessibilityLabel={`View primary meal ${featuredMeal.items?.[0] || featuredMeal.name}`}
                 >
-                  <View style={styles.featuredCardInner}>
+                  <View style={styles.featuredCardInner} testID="recommendation-card-0">
                     <Text style={styles.featuredMealTitle}>
                       {featuredMeal.items && featuredMeal.items.length > 0
                         ? featuredMeal.items[0]

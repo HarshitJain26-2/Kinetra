@@ -109,14 +109,14 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
         <TouchableOpacity
           style={styles.avatarButton}
           onPress={handleProfilePress}
-          accessibilityLabel="Profile"
+          accessibilityLabel="Athlete Profile"
           accessibilityRole="button"
           testID="stats-header-profile-button"
         >
           <Icon name="profile" size={16} color={colors.gold} />
         </TouchableOpacity>
 
-        <Text style={styles.brandTitle}>PROGRESS</Text>
+        <Text style={styles.brandTitle}>KINETRA</Text>
 
         <TouchableOpacity
           style={styles.notificationButton}
@@ -125,8 +125,14 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
           accessibilityRole="button"
           testID="stats-header-notification-button"
         >
-          <Icon name="bell" size={18} color={colors.primaryText} />
+          <Icon name="bell" size={16} color={colors.gold} />
         </TouchableOpacity>
+      </View>
+
+      {/* 2. EDITORIAL PERFORMANCE HEADER */}
+      <View style={styles.editorialHeader}>
+        <Text style={styles.editorialEyebrow}>ATHLETE TELEMETRY // INTELLIGENCE</Text>
+        <Text style={styles.editorialTitle}>Performance Analytics</Text>
       </View>
 
       {/* 2. TIME RANGE FILTER PILLS */}
@@ -303,32 +309,53 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     ...typography.headlineMd,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.gold,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    letterSpacing: 4,
+  },
+  avatarButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+  },
+  notificationButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  editorialHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  editorialEyebrow: {
+    ...typography.labelCaps,
+    fontSize: 9.5,
+    letterSpacing: 2,
+    color: colors.gold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  editorialTitle: {
+    ...typography.headlineLg,
+    fontSize: 26,
+    lineHeight: 32,
     color: colors.primaryText,
     fontFamily: 'serif',
     fontWeight: '700',
-    letterSpacing: 3,
-  },
-  avatarButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderGold,
-  },
-  notificationButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   filterContainer: {
     paddingHorizontal: spacing.lg,

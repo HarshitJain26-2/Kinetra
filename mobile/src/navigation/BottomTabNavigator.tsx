@@ -95,6 +95,7 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, isActive, onPress, reduceMot
           styles.tabButton,
           { transform: [{ scale }] },
         ]}
+        testID={tab.globalTestID}
       >
         {/* Active Tab Ambient Dot Indicator */}
         {isActive && <View style={styles.activeTabTopDot} />}
