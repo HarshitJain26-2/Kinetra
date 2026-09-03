@@ -107,6 +107,10 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const continueButtonScale = useRef(new Animated.Value(1)).current;
   const editButtonScale = useRef(new Animated.Value(1)).current;
 
+  // Live telemetry micro-interaction animations
+  const repScaleAnim = useRef(new Animated.Value(1)).current;
+  const coachingFadeAnim = useRef(new Animated.Value(1)).current;
+
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -267,9 +271,46 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const continueBtnSpring = createSpring(continueButtonScale, 0.96, 1);
   const editBtnSpring = createSpring(editButtonScale, 0.95, 1);
 
+  // Live rep count pop animation
+  useEffect(() => {
+    if (reps > 0) {
+      Animated.sequence([
+        Animated.timing(repScaleAnim, {
+          toValue: 1.10,
+          duration: 110,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(repScaleAnim, {
+          toValue: 1,
+          duration: 160,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [reps]);
+
+  // Live coaching message transition
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(coachingFadeAnim, {
+        toValue: 0.25,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(coachingFadeAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [coachingMessage]);
+
   // 4. Dedicated Set Complete Entrance Sequence
   useEffect(() => {
     if (sessionState !== 'COMPLETED') return;
+
     let isMounted = true;
     let entranceAnim: Animated.CompositeAnimation | null = null;
     let pulseLoop: Animated.CompositeAnimation | null = null;
@@ -864,17 +905,21 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* 1. CAMERA VIEW */}
+      {/* 1. CAMERA VIEW (Athlete camera feed remains primary background) */}
       <CameraView style={StyleSheet.absoluteFill} facing={facing} />
 
-      {/* 2. SKELETON & FRAMING OVERLAY */}
+      {/* 2. CONTRAST SCRIMS (Subtle vignette overlays protecting HUD legibility) */}
+      <View style={styles.topVignetteScrim} pointerEvents="none" />
+      <View style={styles.bottomVignetteScrim} pointerEvents="none" />
+
+      {/* 3. SKELETON & FRAMING OVERLAY */}
       <PoseSkeletonOverlay
         landmarks={currentLandmarks}
         width={SCREEN_WIDTH}
         height={SCREEN_HEIGHT}
       />
 
-      {/* 3. TOP OVERLAY HEADER */}
+      {/* 4. TOP OVERLAY HEADER */}
       <SafeAreaView edges={['top']} style={styles.liveTopHeader}>
         <Animated.View
           style={[
@@ -903,20 +948,35 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             </Animated.View>
           </TouchableWithoutFeedback>
 
-          {/* Current Exercise Header Card */}
+          {/* Current Exercise Header Card with Set Info */}
           <View style={styles.currentExerciseCard}>
-            <Text style={styles.currentExerciseLabel}>CURRENT EXERCISE</Text>
+            <View style={styles.exerciseEyebrowRow}>
+              <Text style={styles.currentExerciseLabel}>CURRENT EXERCISE</Text>
+              <Text style={styles.currentSetBadge}>SET 0{setNumber}/04</Text>
+            </View>
             <Text style={styles.currentExerciseTitle} numberOfLines={1}>
               {exerciseName}
             </Text>
           </View>
 
-          {/* Right Group: Heart Rate Pill & Flip Camera */}
+          {/* Right Group: Heart Rate, Signal Quality & Flip Camera */}
           <View style={styles.topRightControlsGroup}>
             <View style={styles.bpmPill}>
               <Text style={styles.bpmHeartIcon}>♡</Text>
               <Text style={styles.bpmValue}>142</Text>
               <Text style={styles.bpmUnit}>BPM</Text>
+            </View>
+
+            <View style={styles.signalQualityPill}>
+              <View
+                style={[
+                  styles.signalQualityDot,
+                  { backgroundColor: confidence >= 0.7 ? colors.gold : colors.secondaryText },
+                ]}
+              />
+              <Text style={styles.signalQualityText}>
+                {confidence >= 0.7 ? 'STABLE' : 'ALIGNING'}
+              </Text>
             </View>
 
             <TouchableWithoutFeedback
@@ -939,7 +999,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
         </Animated.View>
       </SafeAreaView>
 
-      {/* 4. ERROR BANNER */}
+      {/* 5. ERROR BANNER */}
       {errorMessage && (
         <View style={styles.errorBanner} testID="live-inference-error-banner">
           <View style={styles.errorBannerLeft}>
@@ -960,7 +1020,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
         </View>
       )}
 
-      {/* 5. CENTER HERO HUD REPS DISPLAY (Matches Stitch screen.png) */}
+      {/* 6. CENTER HERO HUD REPS DISPLAY (Live Biomechanical Focal Point) */}
       <Animated.View
         style={[
           styles.centerHeroContainer,
@@ -971,10 +1031,16 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
         ]}
         testID="live-metrics-hud-card"
       >
-        <Text style={styles.centerRepsNumber} testID="live-reps-counter">
+        <Animated.Text
+          style={[
+            styles.centerRepsNumber,
+            { transform: [{ scale: repScaleAnim }] },
+          ]}
+          testID="live-reps-counter"
+        >
           {reps}
           <Text style={styles.centerTargetReps}>/{targetReps}</Text>
-        </Text>
+        </Animated.Text>
         <View style={styles.repsLabelRow}>
           <View style={styles.repsGoldBar} />
           <Text style={styles.repsLabelText} testID="live-stage-indicator">
@@ -983,28 +1049,36 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
           <View style={styles.repsGoldBar} />
         </View>
 
-        {/* Small Form Score Badge */}
+        {/* Live Form Score Badge with Visual Indicator */}
         <View style={styles.liveFormScoreBadge}>
           <Icon name="shield" size={11} color={colors.gold} />
           <Text style={styles.liveFormScoreText}>{formScore}% FORM</Text>
+          <View style={styles.formScoreMiniTrack}>
+            <View
+              style={[
+                styles.formScoreMiniFill,
+                { width: `${Math.min(100, Math.max(0, formScore))}%` },
+              ]}
+            />
+          </View>
         </View>
       </Animated.View>
 
-      {/* 6. BOTTOM COACHING BANNER & CONTROLS ROW (Matches Stitch screen.png) */}
+      {/* 7. BOTTOM COACHING BANNER & CONTROLS ROW */}
       <SafeAreaView edges={['bottom']} style={styles.liveBottomContainer}>
-        {/* Dynamic Coaching Banner: PULSE KEEP YOUR CHEST UP */}
+        {/* Dynamic Coaching Banner with Fade Transition */}
         <Animated.View
           style={[
             styles.coachingPill,
             {
-              opacity: hudOpacity,
+              opacity: coachingFadeAnim,
               transform: [{ translateY: bottomControlsTranslateY }],
             },
           ]}
           testID="live-coaching-banner"
         >
           <View style={styles.pulseBadge}>
-            <Text style={styles.pulseBadgeText}>PULSE</Text>
+            <Text style={styles.pulseBadgeText}>AI COACH</Text>
           </View>
           <Text style={styles.coachingPillText} numberOfLines={1}>
             {coachingMessage.toUpperCase()}
@@ -1036,7 +1110,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             </View>
           </View>
 
-          {/* Middle: Secondary Pause Control [|◁ / ⏸] */}
+          {/* Middle: Secondary Pause Control [⏸] */}
           <TouchableWithoutFeedback
             {...pauseBtnSpring}
             onPress={handlePause}
@@ -1074,6 +1148,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
       </SafeAreaView>
     </View>
   );
+
 };
 
 const styles = StyleSheet.create({
@@ -1580,6 +1655,24 @@ const styles = StyleSheet.create({
 
 
   // ── Live HUD State (Exact Stitch Reference screen.png) ──
+  topVignetteScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    backgroundColor: 'rgba(5, 6, 7, 0.45)',
+    zIndex: 1,
+  },
+  bottomVignetteScrim: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    backgroundColor: 'rgba(5, 6, 7, 0.65)',
+    zIndex: 1,
+  },
   liveTopHeader: {
     position: 'absolute',
     top: 0,
@@ -1618,6 +1711,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     maxWidth: SCREEN_WIDTH * 0.45,
+  },
+  exerciseEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  currentSetBadge: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 8,
+    letterSpacing: 1,
+    fontWeight: '800',
   },
   currentExerciseLabel: {
     ...typography.labelCaps,
@@ -1668,6 +1774,30 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 1,
   },
+  signalQualityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: borderRadius.sm,
+    gap: 5,
+  },
+  signalQualityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  signalQualityText: {
+    ...typography.labelCaps,
+    color: colors.secondaryText,
+    fontSize: 8,
+    letterSpacing: 1,
+    fontWeight: '700',
+  },
+
   navSquareMiniButton: {
     width: 36,
     height: 36,
@@ -1748,6 +1878,19 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 1,
     fontWeight: '700',
+  },
+  formScoreMiniTrack: {
+    width: 28,
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 1.5,
+    overflow: 'hidden',
+    marginLeft: 4,
+  },
+  formScoreMiniFill: {
+    height: '100%',
+    backgroundColor: colors.gold,
+    borderRadius: 1.5,
   },
 
   // ── Error Banner ──
