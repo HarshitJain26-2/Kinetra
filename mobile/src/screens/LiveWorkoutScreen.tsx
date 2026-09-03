@@ -18,6 +18,8 @@ import {
   Animated,
   Easing,
   AccessibilityInfo,
+  ScrollView,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
@@ -29,6 +31,7 @@ import { resolveExerciseConfig } from '../engine/pose/configs';
 import { PoseAnalysisResult, ExerciseAnalysisConfig, PoseLandmark } from '../engine/pose/types';
 import { offlineSetQueue } from '../utils/offlineQueue';
 import { ScreenProps } from '../navigation/types';
+import { images } from '../assets';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -81,6 +84,20 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  // Dedicated Set Complete Entrance Animations
+  const summaryBgOpacity = useRef(new Animated.Value(0)).current;
+  const summaryCheckScale = useRef(new Animated.Value(0.7)).current;
+  const summaryCheckOpacity = useRef(new Animated.Value(0)).current;
+  const summaryTitleTranslateY = useRef(new Animated.Value(14)).current;
+  const summaryTitleOpacity = useRef(new Animated.Value(0)).current;
+  const summaryMetricsTranslateY = useRef(new Animated.Value(14)).current;
+  const summaryMetricsOpacity = useRef(new Animated.Value(0)).current;
+  const summaryInsightsTranslateY = useRef(new Animated.Value(14)).current;
+  const summaryInsightsOpacity = useRef(new Animated.Value(0)).current;
+  const summaryCtaTranslateY = useRef(new Animated.Value(14)).current;
+  const summaryCtaOpacity = useRef(new Animated.Value(0)).current;
+  const summaryPulseAnim = useRef(new Animated.Value(1)).current;
+
   // Tactile button scales
   const stopButtonScale = useRef(new Animated.Value(1)).current;
   const pauseButtonScale = useRef(new Animated.Value(1)).current;
@@ -88,6 +105,8 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const flipButtonScale = useRef(new Animated.Value(1)).current;
   const resumeButtonScale = useRef(new Animated.Value(1)).current;
   const continueButtonScale = useRef(new Animated.Value(1)).current;
+  const editButtonScale = useRef(new Animated.Value(1)).current;
+
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -246,8 +265,154 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const flipBtnSpring = createSpring(flipButtonScale, 0.90, 1);
   const resumeBtnSpring = createSpring(resumeButtonScale, 0.96, 1);
   const continueBtnSpring = createSpring(continueButtonScale, 0.96, 1);
+  const editBtnSpring = createSpring(editButtonScale, 0.95, 1);
 
-  // 4. User Controls
+  // 4. Dedicated Set Complete Entrance Sequence
+  useEffect(() => {
+    if (sessionState !== 'COMPLETED') return;
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+
+    const runSummarySequence = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(
+        () => false
+      );
+
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        summaryBgOpacity.setValue(1);
+        summaryCheckScale.setValue(1);
+        summaryCheckOpacity.setValue(1);
+        summaryTitleTranslateY.setValue(0);
+        summaryTitleOpacity.setValue(1);
+        summaryMetricsTranslateY.setValue(0);
+        summaryMetricsOpacity.setValue(1);
+        summaryInsightsTranslateY.setValue(0);
+        summaryInsightsOpacity.setValue(1);
+        summaryCtaTranslateY.setValue(0);
+        summaryCtaOpacity.setValue(1);
+        return;
+      }
+
+      entranceAnim = Animated.stagger(80, [
+        // Phase 1: Background Scrim
+        Animated.timing(summaryBgOpacity, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        // Phase 2: Gold Completion Indicator
+        Animated.parallel([
+          Animated.timing(summaryCheckOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryCheckScale, {
+            toValue: 1,
+            duration: 450,
+            easing: Easing.out(Easing.back(1.4)),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 3: Title & Context
+        Animated.parallel([
+          Animated.timing(summaryTitleOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryTitleTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 4: Primary & Secondary Metrics
+        Animated.parallel([
+          Animated.timing(summaryMetricsOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryMetricsTranslateY, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 5: AI Insights Card
+        Animated.parallel([
+          Animated.timing(summaryInsightsOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryInsightsTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Phase 6: Actions CTA Block
+        Animated.parallel([
+          Animated.timing(summaryCtaOpacity, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryCtaTranslateY, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]);
+
+      entranceAnim.start();
+
+      // Subtle breathing pulse on the gold completion badge
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(summaryPulseAnim, {
+            toValue: 1.05,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(summaryPulseAnim, {
+            toValue: 1,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseLoop.start();
+    };
+
+    runSummarySequence();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+      if (pulseLoop) pulseLoop.stop();
+    };
+  }, [sessionState]);
+
+  // 5. User Controls
   const handleAllowCamera = async () => {
     const result = await requestPermission();
     if (result.granted) {
@@ -460,106 +625,239 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 4: SET COMPLETE SUMMARY
+  // RENDER STATE 4: SET COMPLETE SUMMARY (Stitch Luxury Result Screen)
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'COMPLETED') {
     const finalScore = setResult?.average_form_score ?? formScore;
     const finalReps = setResult?.rep_count ?? reps;
 
     return (
-      <SafeAreaView style={styles.darkCanvas} edges={['top', 'bottom']}>
-        <View style={styles.summaryContainer}>
-          {/* Gold Checkmark Badge */}
-          <View style={styles.summaryCheckCircle}>
-            <Text style={styles.summaryCheckIcon}>✓</Text>
-          </View>
-
-          <Text style={styles.summaryExerciseSubtitle}>{exerciseName.toUpperCase()}</Text>
-          <Text style={styles.summarySetTitle}>Set {setNumber} Complete</Text>
-
-          {/* Metrics 2-column card row */}
-          <View style={styles.summaryMetricsRow}>
-            <View style={styles.summaryMetricCard}>
-              <Text style={styles.summaryMetricLabel}>REPS</Text>
-              <Text style={styles.summaryMetricValue}>
-                {finalReps} <Text style={styles.summaryMetricMuted}>/ {targetReps}</Text>
-              </Text>
-            </View>
-
-            <View style={styles.summaryMetricCard}>
-              <View style={styles.formScoreHeader}>
-                <Text style={styles.summaryMetricLabel}>FORM SCORE</Text>
-                <Icon name="sparkle" size={14} color={colors.gold} />
-              </View>
-              <Text style={[styles.summaryMetricValue, { color: colors.gold }]}>
-                {finalScore} <Text style={styles.summaryMetricMuted}>/ 100</Text>
-              </Text>
-            </View>
-          </View>
-
-          {/* Duration Card */}
-          <View style={styles.summaryDurationCard}>
-            <Text style={styles.summaryMetricLabel}>DURATION</Text>
-            <Text style={styles.summaryDurationValue}>{formatDuration(elapsedSeconds)}</Text>
-          </View>
-
-          {/* AI Insights Card */}
-          <View style={styles.insightsCard}>
-            <View style={styles.insightsHeader}>
-              <Text style={styles.insightsEyeIcon}>👁</Text>
-              <Text style={styles.insightsTitle}>AI INSIGHTS</Text>
-            </View>
-
-            <View style={styles.insightBulletRow}>
-              <Text style={styles.insightBulletIcon}>▲</Text>
-              <Text style={styles.insightBulletText}>
-                {setResult && setResult.flags.length === 0
-                  ? 'Optimal Biomechanical Depth achieved on all repetitions.'
-                  : setResult?.flags[0]?.description || 'Form maintained through range of motion.'}
-              </Text>
-            </View>
-
-            <View style={styles.insightBulletRow}>
-              <Text style={styles.insightBulletIcon}>⏱</Text>
-              <Text style={styles.insightBulletText}>
-                Consistent 2-second eccentric cadence maintained throughout set.
-              </Text>
-            </View>
-          </View>
-
-          {/* Actions */}
-          <TouchableOpacity
-            style={styles.editSetButton}
-            onPress={() => setSessionState('TRACKING')}
-            testID="edit-set-button"
-            accessibilityRole="button"
-            accessibilityLabel="Edit Set"
+      <View style={styles.summaryRoot}>
+        {/* Background Canvas with subtle athletic asset & dark scrim */}
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: summaryBgOpacity }]}>
+          <ImageBackground
+            source={images.gymBarbell}
+            style={styles.summaryBackgroundImage}
+            imageStyle={styles.summaryBgImageStyle}
           >
-            <Text style={styles.editSetText}>EDIT SET</Text>
-          </TouchableOpacity>
+            <View style={styles.summaryBackdropOverlay} />
+          </ImageBackground>
+        </Animated.View>
 
-          <TouchableWithoutFeedback
-            {...continueBtnSpring}
-            onPress={handleExitWorkout}
-            testID="continue-set-button"
-            accessibilityRole="button"
-            accessibilityLabel={`Continue to Set ${setNumber + 1}`}
+        <SafeAreaView style={styles.summarySafeContainer} edges={['top', 'bottom']}>
+          <ScrollView
+            contentContainerStyle={styles.summaryScrollContent}
+            showsVerticalScrollIndicator={false}
           >
+            {/* Top Status & Exercise Context */}
             <Animated.View
               style={[
-                styles.continueSetButton,
-                { transform: [{ scale: continueButtonScale }] },
+                styles.summaryHeaderBlock,
+                {
+                  opacity: summaryTitleOpacity,
+                  transform: [{ translateY: summaryTitleTranslateY }],
+                },
               ]}
             >
-              <Text style={styles.continueSetText}>
-                CONTINUE TO SET {setNumber + 1}  →
+              <Text style={styles.summaryStatusEyebrow}>
+                SET {setNumber} PROTOCOL COMPLETE
               </Text>
+              <Text style={styles.summarySetTitle}>{exerciseName}</Text>
             </Animated.View>
-          </TouchableWithoutFeedback>
-        </View>
-      </SafeAreaView>
+
+            {/* Gold Geometric Completion Indicator with dual ring & subtle idle pulse */}
+            <Animated.View
+              style={[
+                styles.summaryCheckWrapper,
+                {
+                  opacity: summaryCheckOpacity,
+                  transform: [
+                    { scale: summaryCheckScale },
+                    { scale: summaryPulseAnim },
+                  ],
+                },
+              ]}
+            >
+              <View style={styles.summaryCheckOuterRing}>
+                <View style={styles.summaryCheckCircle}>
+                  <Text style={styles.summaryCheckIcon}>✓</Text>
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* 2-Column Primary Metrics Grid (REPS & FORM SCORE) */}
+            <Animated.View
+              style={[
+                styles.summaryMetricsRow,
+                {
+                  opacity: summaryMetricsOpacity,
+                  transform: [{ translateY: summaryMetricsTranslateY }],
+                },
+              ]}
+            >
+              <View style={styles.summaryMetricCard}>
+                <Text style={styles.summaryMetricLabel}>REPS COMPLETED</Text>
+                <Text style={styles.summaryMetricValue}>
+                  {finalReps} <Text style={styles.summaryMetricMuted}>/ {targetReps}</Text>
+                </Text>
+                <View style={styles.metricProgressTrack}>
+                  <View
+                    style={[
+                      styles.metricProgressFill,
+                      {
+                        width: `${Math.min(100, (finalReps / targetReps) * 100)}%`,
+                        backgroundColor: colors.primaryText,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.summaryMetricCard}>
+                <View style={styles.formScoreHeader}>
+                  <Text style={styles.summaryMetricLabel}>FORM ACCURACY</Text>
+                  <Icon name="sparkle" size={13} color={colors.gold} />
+                </View>
+                <Text style={[styles.summaryMetricValue, { color: colors.gold }]}>
+                  {finalScore} <Text style={styles.summaryMetricMuted}>/ 100</Text>
+                </Text>
+                <View style={styles.metricProgressTrack}>
+                  <View
+                    style={[
+                      styles.metricProgressFill,
+                      {
+                        width: `${Math.min(100, finalScore)}%`,
+                        backgroundColor: colors.gold,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* Secondary Metrics Row (DURATION & AVERAGE INTENSITY) */}
+            <Animated.View
+              style={[
+                styles.summarySecondaryRow,
+                {
+                  opacity: summaryMetricsOpacity,
+                  transform: [{ translateY: summaryMetricsTranslateY }],
+                },
+              ]}
+            >
+              <View style={styles.summarySubCard}>
+                <View style={styles.subCardHeader}>
+                  <Icon name="clock" size={13} color={colors.secondaryText} />
+                  <Text style={styles.subCardLabel}>ACTIVE DURATION</Text>
+                </View>
+                <Text style={styles.subCardValue}>{formatDuration(elapsedSeconds)}</Text>
+              </View>
+
+              <View style={styles.summarySubCard}>
+                <View style={styles.subCardHeader}>
+                  <Icon name="pulse" size={13} color={colors.crimson} />
+                  <Text style={styles.subCardLabel}>AVERAGE INTENSITY</Text>
+                </View>
+                <Text style={styles.subCardValue}>142 BPM</Text>
+              </View>
+            </Animated.View>
+
+            {/* AI Performance Telemetry Card */}
+            <Animated.View
+              style={[
+                styles.insightsCard,
+                {
+                  opacity: summaryInsightsOpacity,
+                  transform: [{ translateY: summaryInsightsTranslateY }],
+                },
+              ]}
+            >
+              <View style={styles.insightsHeader}>
+                <Icon name="sparkle" size={14} color={colors.gold} />
+                <Text style={styles.insightsTitle}>AI PERFORMANCE TELEMETRY</Text>
+              </View>
+
+              <View style={styles.insightBulletRow}>
+                <Text style={styles.insightBulletIcon}>▲</Text>
+                <Text style={styles.insightBulletText}>
+                  {setResult && setResult.flags.length === 0
+                    ? 'Optimal Biomechanical Depth achieved across all repetitions.'
+                    : setResult?.flags[0]?.description || 'Form maintained through range of motion.'}
+                </Text>
+              </View>
+
+              <View style={styles.insightBulletRow}>
+                <Text style={styles.insightBulletIcon}>⏱</Text>
+                <Text style={styles.insightBulletText}>
+                  Consistent 2-second eccentric cadence maintained throughout set.
+                </Text>
+              </View>
+            </Animated.View>
+
+            {/* Actions Block */}
+            <Animated.View
+              style={[
+                styles.summaryActionsBlock,
+                {
+                  opacity: summaryCtaOpacity,
+                  transform: [{ translateY: summaryCtaTranslateY }],
+                },
+              ]}
+            >
+              {/* Primary CTA */}
+              <TouchableWithoutFeedback
+                {...continueBtnSpring}
+                onPress={handleExitWorkout}
+                testID="continue-set-button"
+                accessibilityRole="button"
+                accessibilityLabel={`Continue to Set ${setNumber + 1}`}
+              >
+                <Animated.View
+                  style={[
+                    styles.continueSetButton,
+                    { transform: [{ scale: continueButtonScale }] },
+                  ]}
+                >
+                  <Text style={styles.continueSetText}>
+                    CONTINUE TO SET {setNumber + 1}  →
+                  </Text>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+
+              {/* Secondary CTA: Edit Set */}
+              <TouchableWithoutFeedback
+                {...editBtnSpring}
+                onPress={() => setSessionState('TRACKING')}
+                testID="edit-set-button"
+                accessibilityRole="button"
+                accessibilityLabel="Edit Set"
+              >
+                <Animated.View
+                  style={[
+                    styles.editSetButton,
+                    { transform: [{ scale: editButtonScale }] },
+                  ]}
+                >
+                  <Text style={styles.editSetText}>EDIT SET DETAILS</Text>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+
+              {/* Tertiary Action: Exit Workout */}
+              <TouchableOpacity
+                onPress={handleExitWorkout}
+                style={styles.summaryExitLink}
+                accessibilityRole="button"
+                accessibilityLabel="Exit Workout"
+              >
+                <Text style={styles.summaryExitText}>Exit Workout Session</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
     );
   }
+
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER STATE 5: ACTIVE LIVE TRACKING HUD (Matches Stitch screen.png)
@@ -1032,41 +1330,86 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderLight,
   },
   // ── Set Complete Summary State ──
-  summaryContainer: {
+  summaryRoot: {
     flex: 1,
-    paddingVertical: spacing.md,
+    backgroundColor: '#050607',
   },
-  summaryCheckCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.goldBright,
+  summaryBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  summaryBgImageStyle: {
+    opacity: 0.18,
+    resizeMode: 'cover',
+  },
+  summaryBackdropOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 6, 7, 0.92)',
+  },
+  summarySafeContainer: {
+    flex: 1,
+  },
+  summaryScrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  summaryHeaderBlock: {
     alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  summaryCheckIcon: {
-    color: colors.inverseText,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  summaryExerciseSubtitle: {
+  summaryStatusEyebrow: {
     ...typography.labelCaps,
     color: colors.gold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textAlign: 'center',
-    marginBottom: 4,
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   summarySetTitle: {
     ...typography.headlineLg,
     color: colors.primaryText,
     fontFamily: 'serif',
     fontWeight: '700',
-    fontSize: 32,
+    fontSize: 28,
     textAlign: 'center',
+  },
+  summaryCheckWrapper: {
+    alignSelf: 'center',
     marginBottom: spacing.xl,
+  },
+  summaryCheckOuterRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 184, 63, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(217, 184, 63, 0.08)',
+  },
+  summaryCheckCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.goldBright,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  summaryCheckIcon: {
+    color: colors.inverseText,
+    fontSize: 26,
+    fontWeight: '800',
   },
   summaryMetricsRow: {
     flexDirection: 'row',
@@ -1075,10 +1418,10 @@ const styles = StyleSheet.create({
   },
   summaryMetricCard: {
     flex: 1,
-    backgroundColor: colors.surfaceDim,
-    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     padding: spacing.md,
   },
   formScoreHeader: {
@@ -1089,9 +1432,10 @@ const styles = StyleSheet.create({
   summaryMetricLabel: {
     ...typography.labelCaps,
     color: colors.tertiaryText,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 1.2,
     marginBottom: 6,
+    fontWeight: '700',
   },
   summaryMetricValue: {
     ...typography.headlineLg,
@@ -1103,46 +1447,72 @@ const styles = StyleSheet.create({
   summaryMetricMuted: {
     fontSize: 14,
     color: colors.tertiaryText,
+    fontWeight: '400',
   },
-  summaryDurationCard: {
-    backgroundColor: colors.surfaceDim,
-    borderRadius: borderRadius.md,
+  metricProgressTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 1.5,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  metricProgressFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  summarySecondaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  summarySubCard: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 20, 22, 0.85)',
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: spacing.md,
-    marginBottom: spacing.lg,
   },
-  summaryDurationValue: {
-    ...typography.headlineMd,
+  subCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  subCardLabel: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 8,
+    letterSpacing: 1,
+    fontWeight: '700',
+  },
+  subCardValue: {
+    ...typography.headlineSm,
     color: colors.primaryText,
-    fontSize: 26,
     fontFamily: 'serif',
+    fontSize: 18,
     fontWeight: '700',
   },
   insightsCard: {
-    backgroundColor: colors.surfaceDim,
-    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(217, 184, 63, 0.3)',
     padding: spacing.md,
     marginBottom: spacing.xl,
   },
   insightsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginBottom: spacing.sm,
-  },
-  insightsEyeIcon: {
-    color: colors.gold,
-    fontSize: 14,
-    marginRight: 6,
   },
   insightsTitle: {
     ...typography.labelCaps,
     color: colors.gold,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    fontWeight: '700',
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontWeight: '800',
   },
   insightBulletRow: {
     flexDirection: 'row',
@@ -1151,9 +1521,9 @@ const styles = StyleSheet.create({
   },
   insightBulletIcon: {
     color: colors.gold,
-    fontSize: 10,
+    fontSize: 9,
     marginRight: 8,
-    marginTop: 3,
+    marginTop: 4,
   },
   insightBulletText: {
     ...typography.bodySm,
@@ -1162,27 +1532,12 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-  editSetButton: {
-    width: '100%',
-    height: 48,
-    backgroundColor: colors.surfaceDim,
-    borderWidth: 1,
-    borderColor: colors.borderGold,
-    borderRadius: borderRadius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  editSetText: {
-    ...typography.labelCaps,
-    color: colors.gold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    fontWeight: '700',
+  summaryActionsBlock: {
+    gap: 10,
   },
   continueSetButton: {
     width: '100%',
-    height: 50,
+    height: 52,
     backgroundColor: colors.goldBright,
     borderRadius: borderRadius.xs,
     alignItems: 'center',
@@ -1192,9 +1547,37 @@ const styles = StyleSheet.create({
     ...typography.labelCaps,
     color: colors.inverseText,
     fontSize: 12,
-    letterSpacing: 1.5,
+    letterSpacing: 1.8,
     fontWeight: '800',
   },
+  editSetButton: {
+    width: '100%',
+    height: 48,
+    backgroundColor: 'rgba(18, 20, 22, 0.95)',
+    borderWidth: 1,
+    borderColor: colors.borderGold,
+    borderRadius: borderRadius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editSetText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+  },
+  summaryExitLink: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  summaryExitText: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 11,
+    letterSpacing: 1.2,
+  },
+
 
   // ── Live HUD State (Exact Stitch Reference screen.png) ──
   liveTopHeader: {
