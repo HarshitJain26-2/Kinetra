@@ -1,25 +1,28 @@
 /**
- * Kinetra Live Vision Coaching & Pose Tracking Screen (Phase 30)
+ * Kinetra Live Vision Coaching & Pose Tracking Screen (Phase 30 / Section 6)
  * Integrates real camera access, MobilePoseRunner, real-time PoseEngine calculations,
- * and luxury dark Stitch UI overlays across all workout states.
+ * and luxury dark Stitch UI overlays matching the reference active workout design.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Dimensions,
   Alert,
   Linking,
   Platform,
+  Animated,
+  Easing,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { Icon } from '../components/Icon';
-import { KinetraButton } from '../components/KinetraButton';
 import { PoseSkeletonOverlay } from '../components/PoseSkeletonOverlay';
 import { MobilePoseRunner, LiveTelemetryUpdate } from '../engine/pose/mobilePoseRunner';
 import { resolveExerciseConfig } from '../engine/pose/configs';
@@ -44,7 +47,8 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const { workoutId, workout, exercise, setNumber = 1 } = route.params;
   const insets = useSafeAreaInsets();
 
-  const exerciseName = exercise?.name || workout?.title || 'Barbell Squat';
+  const exerciseName = exercise?.name || workout?.title || 'Barbell Deadlift';
+  const targetReps = (exercise as any)?.target_reps || 15;
   const exerciseConfig: ExerciseAnalysisConfig = resolveExerciseConfig(exerciseName);
 
   // Session & Camera State
@@ -59,13 +63,31 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   const [stage, setStage] = useState<string>('REST');
   const [formScore, setFormScore] = useState<number>(100);
   const [confidence, setConfidence] = useState<number>(1.0);
-  const [coachingMessage, setCoachingMessage] = useState<string>('Knees tracking well • Controlled tempo');
+  const [coachingMessage, setCoachingMessage] = useState<string>('Keep your chest up • Controlled tempo');
   const [currentLandmarks, setCurrentLandmarks] = useState<PoseLandmark[]>([]);
   const [setResult, setSetResult] = useState<PoseAnalysisResult | null>(null);
 
-  // Runner Reference
+  // Runner & Timer References
   const runnerRef = useRef<MobilePoseRunner | null>(null);
   const timerRef = useRef<any>(null);
+
+  // Animation values for cinematic HUD entrance sequence
+  const hudOpacity = useRef(new Animated.Value(0)).current;
+  const topHeaderTranslateY = useRef(new Animated.Value(-16)).current;
+  const centerHeroScale = useRef(new Animated.Value(0.92)).current;
+  const bottomControlsTranslateY = useRef(new Animated.Value(20)).current;
+
+  // Pulse glow animation for coaching pill & radar
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Tactile button scales
+  const stopButtonScale = useRef(new Animated.Value(1)).current;
+  const pauseButtonScale = useRef(new Animated.Value(1)).current;
+  const closeButtonScale = useRef(new Animated.Value(1)).current;
+  const flipButtonScale = useRef(new Animated.Value(1)).current;
+  const resumeButtonScale = useRef(new Animated.Value(1)).current;
+  const continueButtonScale = useRef(new Animated.Value(1)).current;
 
   // 1. Initialize Pose Runner & Check Camera Permission
   useEffect(() => {
@@ -113,13 +135,119 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     };
   }, [sessionState]);
 
+  // 3. Entrance & Pulse Animations
+  useEffect(() => {
+    let isMounted = true;
+    let entranceAnim: Animated.CompositeAnimation | null = null;
+
+    const runAnimations = async () => {
+      const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(
+        () => false
+      );
+
+      if (!isMounted) return;
+
+      if (reduceMotion) {
+        hudOpacity.setValue(1);
+        topHeaderTranslateY.setValue(0);
+        centerHeroScale.setValue(1);
+        bottomControlsTranslateY.setValue(0);
+        return;
+      }
+
+      // HUD staggered entrance
+      entranceAnim = Animated.parallel([
+        Animated.timing(hudOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(topHeaderTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(centerHeroScale, {
+          toValue: 1,
+          duration: 450,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bottomControlsTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]);
+
+      entranceAnim.start();
+
+      // Subtle pulse for active tracking
+      pulseLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseLoopRef.current.start();
+    };
+
+    runAnimations();
+
+    return () => {
+      isMounted = false;
+      if (entranceAnim) entranceAnim.stop();
+      if (pulseLoopRef.current) pulseLoopRef.current.stop();
+    };
+  }, [hudOpacity, topHeaderTranslateY, centerHeroScale, bottomControlsTranslateY, pulseAnim]);
+
   const formatDuration = (totalSeconds: number): string => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 3. User Controls
+  // Tactile spring press feedback generator
+  const createSpring = (val: Animated.Value, to: number, back: number) => ({
+    onPressIn: () => {
+      Animated.spring(val, {
+        toValue: to,
+        useNativeDriver: true,
+        speed: 40,
+        bounciness: 0,
+      }).start();
+    },
+    onPressOut: () => {
+      Animated.spring(val, {
+        toValue: back,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 4,
+      }).start();
+    },
+  });
+
+  const stopBtnSpring = createSpring(stopButtonScale, 0.92, 1);
+  const pauseBtnSpring = createSpring(pauseButtonScale, 0.92, 1);
+  const closeBtnSpring = createSpring(closeButtonScale, 0.90, 1);
+  const flipBtnSpring = createSpring(flipButtonScale, 0.90, 1);
+  const resumeBtnSpring = createSpring(resumeButtonScale, 0.96, 1);
+  const continueBtnSpring = createSpring(continueButtonScale, 0.96, 1);
+
+  // 4. User Controls
   const handleAllowCamera = async () => {
     const result = await requestPermission();
     if (result.granted) {
@@ -181,19 +309,19 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 1: INITIALIZING VISION COACH (Reference Image 4)
+  // RENDER STATE 1: INITIALIZING VISION COACH
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'INITIALIZING') {
     return (
       <View style={styles.darkCanvas}>
         <View style={styles.initCard}>
-          <View style={styles.radarCircle}>
+          <Animated.View style={[styles.radarCircle, { transform: [{ scale: pulseAnim }] }]}>
             <Icon name="pulse" size={32} color={colors.gold} />
-          </View>
+          </Animated.View>
           <Text style={styles.initTitle}>PREPARING{'\n'}VISION COACH</Text>
           <View style={styles.initStatusRow}>
             <View style={styles.statusDot} />
-            <Text style={styles.initStatusText}>Initializing PoseEngine...</Text>
+            <Text style={styles.initStatusText}>Initializing On-Device ML PoseEngine...</Text>
           </View>
         </View>
       </View>
@@ -201,7 +329,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 2: CAMERA ACCESS REQUIRED (Reference Image 5 Left)
+  // RENDER STATE 2: CAMERA ACCESS REQUIRED
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'PERMISSION_REQUIRED') {
     return (
@@ -212,6 +340,8 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             style={styles.closeButton}
             onPress={handleExitWorkout}
             testID="camera-permission-close-button"
+            accessibilityRole="button"
+            accessibilityLabel="Close"
           >
             <Text style={styles.closeIconText}>✕</Text>
           </TouchableOpacity>
@@ -226,22 +356,25 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
           </View>
           <Text style={styles.permissionTitle}>CAMERA ACCESS REQUIRED</Text>
           <Text style={styles.permissionDescription}>
-            Enable your camera to unlock real-time AI form coaching. Precision analysis demands visual data.
+            Enable your camera to unlock real-time AI form coaching. Precision biomechanical analysis demands visual input.
           </Text>
 
-          <KinetraButton
-            title="🔒 ALLOW CAMERA"
-            variant="primary"
-            onPress={handleAllowCamera}
+          <TouchableOpacity
             style={styles.allowButton}
-            textStyle={styles.allowButtonText}
+            onPress={handleAllowCamera}
             testID="allow-camera-button"
-          />
+            accessibilityRole="button"
+            accessibilityLabel="Allow Camera"
+          >
+            <Text style={styles.allowButtonText}>🔒 ALLOW CAMERA</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => Linking.openSettings()}
             testID="app-settings-button"
+            accessibilityRole="button"
+            accessibilityLabel="App Settings"
           >
             <Text style={styles.settingsButtonText}>APP SETTINGS</Text>
           </TouchableOpacity>
@@ -257,13 +390,18 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 3: WORKOUT PAUSED (Reference Image 3)
+  // RENDER STATE 3: WORKOUT PAUSED
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'PAUSED') {
     return (
       <SafeAreaView style={styles.darkCanvas} edges={['top', 'bottom']}>
         <View style={styles.pausedHeader}>
-          <TouchableOpacity onPress={handleExitWorkout} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={handleExitWorkout}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
             <Text style={styles.closeIconText}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.kinetraBrandTitle}>KINETRA</Text>
@@ -275,21 +413,31 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             <Text style={styles.pausedIconText}>⏸</Text>
           </View>
           <Text style={styles.pausedMainTitle}>WORKOUT{'\n'}PAUSED</Text>
-          <Text style={styles.pausedSubtitle}>Resume when you're ready.</Text>
+          <Text style={styles.pausedSubtitle}>Resume when you're ready to engage.</Text>
 
-          <KinetraButton
-            title="▶ RESUME"
-            variant="primary"
+          <TouchableWithoutFeedback
+            {...resumeBtnSpring}
             onPress={handleResume}
-            style={styles.resumeButton}
-            textStyle={styles.resumeButtonText}
             testID="resume-workout-button"
-          />
+            accessibilityRole="button"
+            accessibilityLabel="Resume Workout"
+          >
+            <Animated.View
+              style={[
+                styles.resumeButton,
+                { transform: [{ scale: resumeButtonScale }] },
+              ]}
+            >
+              <Text style={styles.resumeButtonText}>▶ RESUME PROTOCOL</Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
 
           <TouchableOpacity
             style={styles.exitWorkoutButton}
             onPress={handleExitWorkout}
             testID="exit-workout-button"
+            accessibilityRole="button"
+            accessibilityLabel="Exit Workout"
           >
             <Text style={styles.exitWorkoutText}>EXIT WORKOUT</Text>
           </TouchableOpacity>
@@ -312,7 +460,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 4: SET COMPLETE SUMMARY (Reference Image 1)
+  // RENDER STATE 4: SET COMPLETE SUMMARY
   // ─────────────────────────────────────────────────────────────────────────────
   if (sessionState === 'COMPLETED') {
     const finalScore = setResult?.average_form_score ?? formScore;
@@ -321,7 +469,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     return (
       <SafeAreaView style={styles.darkCanvas} edges={['top', 'bottom']}>
         <View style={styles.summaryContainer}>
-          {/* Gold Checkmark */}
+          {/* Gold Checkmark Badge */}
           <View style={styles.summaryCheckCircle}>
             <Text style={styles.summaryCheckIcon}>✓</Text>
           </View>
@@ -334,7 +482,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             <View style={styles.summaryMetricCard}>
               <Text style={styles.summaryMetricLabel}>REPS</Text>
               <Text style={styles.summaryMetricValue}>
-                {finalReps} <Text style={styles.summaryMetricMuted}>/ 12</Text>
+                {finalReps} <Text style={styles.summaryMetricMuted}>/ {targetReps}</Text>
               </Text>
             </View>
 
@@ -366,7 +514,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
               <Text style={styles.insightBulletIcon}>▲</Text>
               <Text style={styles.insightBulletText}>
                 {setResult && setResult.flags.length === 0
-                  ? 'Perfect Depth achieved on all reps.'
+                  ? 'Optimal Biomechanical Depth achieved on all repetitions.'
                   : setResult?.flags[0]?.description || 'Form maintained through range of motion.'}
               </Text>
             </View>
@@ -374,7 +522,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             <View style={styles.insightBulletRow}>
               <Text style={styles.insightBulletIcon}>⏱</Text>
               <Text style={styles.insightBulletText}>
-                Consistent Tempo maintained throughout the set.
+                Consistent 2-second eccentric cadence maintained throughout set.
               </Text>
             </View>
           </View>
@@ -384,26 +532,37 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
             style={styles.editSetButton}
             onPress={() => setSessionState('TRACKING')}
             testID="edit-set-button"
+            accessibilityRole="button"
+            accessibilityLabel="Edit Set"
           >
             <Text style={styles.editSetText}>EDIT SET</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.continueSetButton}
+          <TouchableWithoutFeedback
+            {...continueBtnSpring}
             onPress={handleExitWorkout}
             testID="continue-set-button"
+            accessibilityRole="button"
+            accessibilityLabel={`Continue to Set ${setNumber + 1}`}
           >
-            <Text style={styles.continueSetText}>
-              CONTINUE TO SET {setNumber + 1}  →
-            </Text>
-          </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.continueSetButton,
+                { transform: [{ scale: continueButtonScale }] },
+              ]}
+            >
+              <Text style={styles.continueSetText}>
+                CONTINUE TO SET {setNumber + 1}  →
+              </Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
         </View>
       </SafeAreaView>
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER STATE 5: ACTIVE LIVE TRACKING HUD (Reference Image 2)
+  // RENDER STATE 5: ACTIVE LIVE TRACKING HUD (Matches Stitch screen.png)
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
@@ -419,36 +578,70 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
 
       {/* 3. TOP OVERLAY HEADER */}
       <SafeAreaView edges={['top']} style={styles.liveTopHeader}>
-        <View style={styles.liveTopRow}>
-          <TouchableOpacity
-            style={styles.navSquareButton}
+        <Animated.View
+          style={[
+            styles.liveTopRow,
+            {
+              opacity: hudOpacity,
+              transform: [{ translateY: topHeaderTranslateY }],
+            },
+          ]}
+        >
+          {/* Close / Back button [✕] */}
+          <TouchableWithoutFeedback
+            {...closeBtnSpring}
             onPress={handlePause}
             testID="live-workout-back-button"
+            accessibilityRole="button"
+            accessibilityLabel="Close or Pause Workout"
           >
-            <Icon name="back" size={20} color={colors.primaryText} />
-          </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.navSquareButton,
+                { transform: [{ scale: closeButtonScale }] },
+              ]}
+            >
+              <Text style={styles.navSquareCloseText}>✕</Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
 
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveBadgeText}>LIVE</Text>
+          {/* Current Exercise Header Card */}
+          <View style={styles.currentExerciseCard}>
+            <Text style={styles.currentExerciseLabel}>CURRENT EXERCISE</Text>
+            <Text style={styles.currentExerciseTitle} numberOfLines={1}>
+              {exerciseName}
+            </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.navSquareButton}
-            onPress={handleToggleFacing}
-            testID="flip-camera-button"
-          >
-            <Icon name="retry" size={16} color={colors.primaryText} />
-          </TouchableOpacity>
-        </View>
+          {/* Right Group: Heart Rate Pill & Flip Camera */}
+          <View style={styles.topRightControlsGroup}>
+            <View style={styles.bpmPill}>
+              <Text style={styles.bpmHeartIcon}>♡</Text>
+              <Text style={styles.bpmValue}>142</Text>
+              <Text style={styles.bpmUnit}>BPM</Text>
+            </View>
 
-        <Text style={styles.liveExerciseTitle}>{exerciseName.toUpperCase()}</Text>
-        <Text style={styles.liveSetSubtitle}>
-          SET {setNumber}   {formatDuration(elapsedSeconds)}
-        </Text>
+            <TouchableWithoutFeedback
+              {...flipBtnSpring}
+              onPress={handleToggleFacing}
+              testID="flip-camera-button"
+              accessibilityRole="button"
+              accessibilityLabel="Flip Camera"
+            >
+              <Animated.View
+                style={[
+                  styles.navSquareMiniButton,
+                  { transform: [{ scale: flipButtonScale }] },
+                ]}
+              >
+                <Icon name="retry" size={14} color={colors.primaryText} />
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </View>
+        </Animated.View>
       </SafeAreaView>
 
-      {/* 4. ERROR BANNER (Image 5 Right) */}
+      {/* 4. ERROR BANNER */}
       {errorMessage && (
         <View style={styles.errorBanner} testID="live-inference-error-banner">
           <View style={styles.errorBannerLeft}>
@@ -461,55 +654,125 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
           <TouchableOpacity
             style={styles.errorRetryButton}
             onPress={handleRetryInference}
+            accessibilityRole="button"
+            accessibilityLabel="Retry Inference"
           >
             <Text style={styles.errorRetryText}>RETRY</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* 5. RIGHT FLOATING HUD CARD (Image 2) */}
-      <View style={styles.hudCard} testID="live-metrics-hud-card">
-        <Text style={styles.hudLabel}>REPS</Text>
-        <Text style={styles.hudRepsValue} testID="live-reps-counter">
+      {/* 5. CENTER HERO HUD REPS DISPLAY (Matches Stitch screen.png) */}
+      <Animated.View
+        style={[
+          styles.centerHeroContainer,
+          {
+            opacity: hudOpacity,
+            transform: [{ scale: centerHeroScale }],
+          },
+        ]}
+        testID="live-metrics-hud-card"
+      >
+        <Text style={styles.centerRepsNumber} testID="live-reps-counter">
           {reps}
+          <Text style={styles.centerTargetReps}>/{targetReps}</Text>
         </Text>
+        <View style={styles.repsLabelRow}>
+          <View style={styles.repsGoldBar} />
+          <Text style={styles.repsLabelText} testID="live-stage-indicator">
+            {stage === 'REST' ? 'REPS' : stage}
+          </Text>
+          <View style={styles.repsGoldBar} />
+        </View>
 
-        <View style={styles.hudDivider} />
+        {/* Small Form Score Badge */}
+        <View style={styles.liveFormScoreBadge}>
+          <Icon name="shield" size={11} color={colors.gold} />
+          <Text style={styles.liveFormScoreText}>{formScore}% FORM</Text>
+        </View>
+      </Animated.View>
 
-        <Text style={styles.hudLabel}>STAGE</Text>
-        <Text style={styles.hudStageValue} testID="live-stage-indicator">
-          {stage}
-        </Text>
-
-        <View style={styles.hudDivider} />
-
-        <Text style={styles.hudLabel}>FORM SCORE</Text>
-        <Text style={styles.hudFormScoreValue}>
-          {formScore}
-          <Text style={styles.hudScoreMuted}> /100</Text>
-        </Text>
-      </View>
-
-      {/* 6. BOTTOM COACHING BANNER & FINISH BUTTON */}
+      {/* 6. BOTTOM COACHING BANNER & CONTROLS ROW (Matches Stitch screen.png) */}
       <SafeAreaView edges={['bottom']} style={styles.liveBottomContainer}>
-        {/* Dynamic Coaching Pill (Image 2) */}
-        <View style={styles.coachingPill} testID="live-coaching-banner">
-          <Icon name="sparkle" size={16} color={colors.gold} />
+        {/* Dynamic Coaching Banner: PULSE KEEP YOUR CHEST UP */}
+        <Animated.View
+          style={[
+            styles.coachingPill,
+            {
+              opacity: hudOpacity,
+              transform: [{ translateY: bottomControlsTranslateY }],
+            },
+          ]}
+          testID="live-coaching-banner"
+        >
+          <View style={styles.pulseBadge}>
+            <Text style={styles.pulseBadgeText}>PULSE</Text>
+          </View>
           <Text style={styles.coachingPillText} numberOfLines={1}>
             {coachingMessage.toUpperCase()}
           </Text>
-        </View>
+        </Animated.View>
 
-        {/* Controls Row */}
-        <View style={styles.liveBottomControls}>
-          <TouchableOpacity
-            style={styles.stopSetButton}
+        {/* Bottom Action Controls Row */}
+        <Animated.View
+          style={[
+            styles.bottomActionRow,
+            {
+              opacity: hudOpacity,
+              transform: [{ translateY: bottomControlsTranslateY }],
+            },
+          ]}
+        >
+          {/* Left: Focus Protocol / Audio Widget */}
+          <View style={styles.focusAudioCard}>
+            <View style={styles.focusAudioArtwork}>
+              <Icon name="pulse" size={15} color={colors.gold} />
+            </View>
+            <View style={styles.focusAudioDetails}>
+              <Text style={styles.focusAudioName} numberOfLines={1}>
+                Midnight Drive
+              </Text>
+              <Text style={styles.focusAudioTag}>
+                Kinetra Focus • {formatDuration(elapsedSeconds)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Middle: Secondary Pause Control [|◁ / ⏸] */}
+          <TouchableWithoutFeedback
+            {...pauseBtnSpring}
+            onPress={handlePause}
+            accessibilityRole="button"
+            accessibilityLabel="Pause Session"
+          >
+            <Animated.View
+              style={[
+                styles.secondaryPauseButton,
+                { transform: [{ scale: pauseButtonScale }] },
+              ]}
+            >
+              <Text style={styles.secondaryPauseIcon}>⏸</Text>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+
+          {/* Right: Dominant Stop / Complete Set Button [⏹] */}
+          <TouchableWithoutFeedback
+            {...stopBtnSpring}
             onPress={handleCompleteSet}
             testID="finish-set-button"
+            accessibilityRole="button"
+            accessibilityLabel="Finish and Log Set"
           >
-            <View style={styles.stopSquareIcon} />
-          </TouchableOpacity>
-        </View>
+            <Animated.View
+              style={[
+                styles.stopSetButton,
+                { transform: [{ scale: stopButtonScale }] },
+              ]}
+            >
+              <View style={styles.stopSquareIcon} />
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -533,12 +796,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     borderWidth: 2,
     borderColor: colors.gold,
-    backgroundColor: colors.goldMuted,
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
@@ -631,16 +894,18 @@ const styles = StyleSheet.create({
   allowButton: {
     width: '100%',
     height: 50,
-    backgroundColor: colors.surfaceBright,
-    borderWidth: 1,
-    borderColor: colors.borderGold,
+    backgroundColor: colors.goldBright,
+    borderRadius: borderRadius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
   },
   allowButtonText: {
-    ...typography.labelCaps,
-    color: colors.gold,
-    fontWeight: '700',
+    ...typography.button,
+    color: colors.inverseText,
+    fontWeight: '800',
     fontSize: 12,
+    letterSpacing: 1.5,
   },
   settingsButton: {
     paddingVertical: spacing.xs,
@@ -714,10 +979,14 @@ const styles = StyleSheet.create({
   resumeButton: {
     width: '100%',
     height: 52,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.goldBright,
+    borderRadius: borderRadius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.lg,
   },
   resumeButtonText: {
+    ...typography.button,
     color: colors.inverseText,
     fontWeight: '800',
     fontSize: 13,
@@ -762,7 +1031,7 @@ const styles = StyleSheet.create({
     height: 36,
     backgroundColor: colors.borderLight,
   },
-  // ── Set Complete Summary State (Image 1) ──
+  // ── Set Complete Summary State ──
   summaryContainer: {
     flex: 1,
     paddingVertical: spacing.md,
@@ -771,7 +1040,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.goldBright,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -899,7 +1168,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDim,
     borderWidth: 1,
     borderColor: colors.borderGold,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.xs,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -914,19 +1183,20 @@ const styles = StyleSheet.create({
   continueSetButton: {
     width: '100%',
     height: 50,
-    backgroundColor: '#E6E4DC',
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.goldBright,
+    borderRadius: borderRadius.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
   continueSetText: {
     ...typography.labelCaps,
-    color: '#0A0A0B',
+    color: colors.inverseText,
     fontSize: 12,
     letterSpacing: 1.5,
     fontWeight: '800',
   },
-  // ── Live HUD State (Image 2) ──
+
+  // ── Live HUD State (Exact Stitch Reference screen.png) ──
   liveTopHeader: {
     position: 'absolute',
     top: 0,
@@ -934,68 +1204,173 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
-    alignItems: 'center',
+    zIndex: 10,
   },
   liveTopRow: {
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    width: '100%',
   },
   navSquareButton: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'rgba(15, 17, 19, 0.75)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  liveBadge: {
+  navSquareCloseText: {
+    color: colors.primaryText,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  currentExerciseCard: {
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    maxWidth: SCREEN_WIDTH * 0.45,
+  },
+  currentExerciseLabel: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 8,
+    letterSpacing: 1.2,
+    fontWeight: '700',
+  },
+  currentExerciseTitle: {
+    ...typography.headlineSm,
+    color: colors.primaryText,
+    fontFamily: 'serif',
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  topRightControlsGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  bpmPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: borderRadius.sm,
+  },
+  bpmHeartIcon: {
+    color: colors.gold,
+    fontSize: 13,
+    marginRight: 6,
+    fontWeight: '700',
+  },
+  bpmValue: {
+    fontFamily: 'serif',
+    color: colors.gold,
+    fontSize: 16,
+    fontWeight: '800',
+    marginRight: 4,
+  },
+  bpmUnit: {
+    ...typography.labelCaps,
+    color: colors.tertiaryText,
+    fontSize: 8,
+    letterSpacing: 1,
+  },
+  navSquareMiniButton: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.xs,
     backgroundColor: 'rgba(15, 17, 19, 0.75)',
     borderWidth: 1,
-    borderColor: 'rgba(217, 184, 63, 0.4)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.gold,
-    marginRight: 6,
+
+  // ── Center Reps Hero ──
+  centerHeroContainer: {
+    position: 'absolute',
+    top: '40%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  liveBadgeText: {
-    ...typography.labelCaps,
-    color: colors.gold,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  liveExerciseTitle: {
-    ...typography.headlineMd,
+  centerRepsNumber: {
+    ...typography.headlineLg,
+    fontSize: 68,
+    lineHeight: 74,
     color: colors.primaryText,
     fontFamily: 'serif',
     fontWeight: '700',
-    fontSize: 20,
-    letterSpacing: 2,
     textAlign: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
-  liveSetSubtitle: {
+  centerTargetReps: {
+    fontSize: 42,
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontWeight: '400',
+  },
+  repsLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -4,
+  },
+  repsGoldBar: {
+    width: 24,
+    height: 1.5,
+    backgroundColor: colors.gold,
+  },
+  repsLabelText: {
     ...typography.labelCaps,
-    color: colors.secondaryText,
+    color: colors.gold,
     fontSize: 11,
-    letterSpacing: 1.2,
-    marginTop: 2,
+    letterSpacing: 2,
+    fontWeight: '800',
   },
+  liveFormScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 17, 19, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.3)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: 10,
+  },
+  liveFormScoreText: {
+    ...typography.labelCaps,
+    color: colors.gold,
+    fontSize: 9,
+    letterSpacing: 1,
+    fontWeight: '700',
+  },
+
+  // ── Error Banner ──
   errorBanner: {
     position: 'absolute',
-    top: 130,
+    top: 110,
     left: spacing.lg,
     right: spacing.lg,
     backgroundColor: 'rgba(23, 25, 27, 0.95)',
@@ -1006,6 +1381,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 15,
   },
   errorBannerLeft: {
     flexDirection: 'row',
@@ -1038,55 +1414,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  hudCard: {
-    position: 'absolute',
-    right: spacing.lg,
-    top: '32%',
-    backgroundColor: 'rgba(15, 17, 19, 0.85)',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 184, 63, 0.3)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    minWidth: 110,
-  },
-  hudLabel: {
-    ...typography.labelCaps,
-    color: colors.tertiaryText,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  hudRepsValue: {
-    ...typography.headlineLg,
-    color: colors.primaryText,
-    fontFamily: 'serif',
-    fontWeight: '700',
-    fontSize: 28,
-  },
-  hudDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    marginVertical: 8,
-  },
-  hudStageValue: {
-    ...typography.labelCaps,
-    color: colors.gold,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  hudFormScoreValue: {
-    ...typography.headlineMd,
-    color: colors.gold,
-    fontFamily: 'serif',
-    fontWeight: '700',
-    fontSize: 22,
-  },
-  hudScoreMuted: {
-    fontSize: 12,
-    color: colors.tertiaryText,
-  },
+
+  // ── Bottom Coaching Banner & Controls Row ──
   liveBottomContainer: {
     position: 'absolute',
     bottom: 0,
@@ -1095,46 +1424,125 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     alignItems: 'center',
+    zIndex: 10,
   },
   coachingPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 17, 19, 0.92)',
+    backgroundColor: 'rgba(15, 17, 19, 0.88)',
     borderWidth: 1,
-    borderColor: colors.borderGold,
+    borderColor: 'rgba(217, 184, 63, 0.45)',
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     marginBottom: spacing.md,
-    maxWidth: '92%',
+    width: '100%',
   },
-  coachingPillText: {
+  pulseBadge: {
+    backgroundColor: 'transparent',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(217, 184, 63, 0.35)',
+    paddingRight: 10,
+    marginRight: 10,
+  },
+  pulseBadgeText: {
     ...typography.labelCaps,
     color: colors.gold,
     fontSize: 11,
+    letterSpacing: 2,
+    fontWeight: '800',
+  },
+  coachingPillText: {
+    ...typography.labelCaps,
+    color: colors.primaryText,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
-    marginLeft: 8,
+    flex: 1,
   },
-  liveBottomControls: {
+  bottomActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     width: '100%',
+    gap: 12,
+  },
+  focusAudioCard: {
+    flex: 1,
+    height: 56,
+    backgroundColor: 'rgba(15, 17, 19, 0.88)',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  focusAudioArtwork: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.xs,
+    backgroundColor: 'rgba(217, 184, 63, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  focusAudioDetails: {
+    flex: 1,
+  },
+  focusAudioName: {
+    ...typography.bodySm,
+    fontWeight: '700',
+    color: colors.primaryText,
+    fontSize: 12,
+  },
+  focusAudioTag: {
+    ...typography.caption,
+    color: colors.tertiaryText,
+    fontSize: 10,
+  },
+  secondaryPauseButton: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'rgba(15, 17, 19, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  secondaryPauseIcon: {
+    color: colors.primaryText,
+    fontSize: 18,
+  },
   stopSetButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.sm,
     backgroundColor: 'rgba(230, 57, 70, 0.85)',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.crimson,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.crimson,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   stopSquareIcon: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     backgroundColor: colors.primaryText,
-    borderRadius: 3,
+    borderRadius: 2,
   },
 });
+
