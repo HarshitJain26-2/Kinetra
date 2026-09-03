@@ -264,8 +264,8 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
       ? 'Metabolic Fat Loss Protocol'
       : nutritionProfile?.goal === 'maintain'
       ? 'Athletic Conditioning Protocol'
-      : (userProfile?.primary_goal
-          ? `${userProfile.primary_goal.toUpperCase()} PROTOCOL`
+      : ((userProfile as any)?.primary_goal
+          ? `${(userProfile as any).primary_goal.toUpperCase()} PROTOCOL`
           : 'OBJECTIVE // NOT CALIBRATED');
 
   // Derived Calorie Metrics (Strict No-Fabrication)
@@ -770,7 +770,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
                       <View style={styles.loggedMealTopRow}>
                         <View style={styles.mealTimingBadge}>
                           <Text style={styles.mealTimingText}>
-                            {(log.meal_type || 'MEAL').toUpperCase()}
+                            {((log as any).timing || (log as any).meal_type || 'MEAL').toUpperCase()}
                           </Text>
                         </View>
                         <Text style={styles.loggedMealCalories}>
@@ -779,16 +779,16 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
                       </View>
 
                       <Text style={styles.loggedMealName} numberOfLines={1}>
-                        {log.name}
+                        {log.meal_name || (log as any).name}
                       </Text>
 
                       <View style={styles.loggedMealMacroRow}>
                         <Text style={styles.loggedMealMacroTag}>
                           P: {log.protein_g ?? '--'}G • C: {log.carbs_g ?? '--'}G • F: {log.fat_g ?? '--'}G
                         </Text>
-                        {log.logged_at ? (
+                        {(log.created_at || (log as any).logged_at) ? (
                           <Text style={styles.loggedMealTimestamp}>
-                            {new Date(log.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(log.created_at || (log as any).logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </Text>
                         ) : null}
                       </View>

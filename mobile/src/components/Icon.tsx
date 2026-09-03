@@ -38,7 +38,9 @@ export type IconName =
   | 'person'
   | 'cutlery'
   | 'utensils'
-  | 'ribbon';
+  | 'ribbon'
+  | 'search'
+  | 'workout';
 
 interface IconProps {
   name: IconName;
@@ -253,6 +255,18 @@ export const Icon: React.FC<IconProps> = ({
         return (
           <View style={[styles.center, { width: size, height: size }]}>
             <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🎗️</Text>
+          </View>
+        );
+      case 'search':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🔍</Text>
+          </View>
+        );
+      case 'workout':
+        return (
+          <View style={[styles.center, { width: size, height: size }]}>
+            <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🏋️</Text>
           </View>
         );
       default:

@@ -138,8 +138,8 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
     };
   }, []);
 
-  const combinedNavigation = useCallback(
-    {
+  const combinedNavigation = React.useMemo(
+    () => ({
       navigate: (screen: string, params?: any) => {
         if (TABS.some((t) => t.name === screen)) {
           setActiveTab(screen as MainTabName);
@@ -164,7 +164,7 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ navigati
           rootNavigation.navigate(screen, params);
         }
       },
-    },
+    }),
     [rootNavigation]
   );
 

@@ -21,6 +21,7 @@ import { AnalyticsSummaryCards } from '../components/AnalyticsSummaryCards';
 import { ConsistencySection } from '../components/ConsistencySection';
 import { ProgressChartCard } from '../components/ProgressChartCard';
 import { LoadingIndicator } from '../components/LoadingIndicator';
+import { StatsSkeleton } from '../components/KinetraSkeleton';
 import {
   apiClient,
   SessionItem,
@@ -173,8 +174,8 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
         }
       >
         {loading && !refreshing ? (
-          <View style={styles.stateWrapper}>
-            <LoadingIndicator message="Calculating telemetry analytics..." />
+          <View style={styles.stateWrapper} testID="stats-loading-state">
+            <StatsSkeleton testID="stats-loading-skeleton" />
           </View>
         ) : error ? (
           /* EXACT STITCH ERROR CARD */
