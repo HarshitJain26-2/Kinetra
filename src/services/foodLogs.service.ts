@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, InternalServerError } from '../utils/errors.js';
+import { NotFoundError, InternalServerError, DatabaseError } from '../utils/errors.js';
 
 export interface FoodLogRow {
   id: string;
@@ -65,20 +65,12 @@ export class FoodLogsService {
       .select()
       .single();
 
-    if (error || !data) {
-      // In-memory mock fallback when Supabase table not migrated on test runner
-      return {
-        id: `mock-log-${Date.now()}`,
-        user_id: userId,
-        log_date: logDate,
-        meal_name: payload.meal_name,
-        timing: payload.timing || 'lunch',
-        calories: payload.calories,
-        protein_g: payload.protein_g ?? 0,
-        carbs_g: payload.carbs_g ?? 0,
-        fat_g: payload.fat_g ?? 0,
-        created_at: new Date().toISOString(),
-      };
+    if (error) {
+      throw new DatabaseError(`Failed to create food log: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new InternalServerError('Failed to create food log: No data returned');
     }
 
     return data as FoodLogRow;

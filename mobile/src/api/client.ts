@@ -453,25 +453,65 @@ export const apiClient = {
 
   async logSessionExercise(
     sessionId: string,
-    payload: { exercise_id: string; sets: number; reps: number; duration_seconds?: number },
+    payload: {
+      exercise_id: string;
+      set_number?: number;
+      sets?: number;
+      reps?: number | null;
+      weight_kg?: number | null;
+      duration_sec?: number | null;
+      duration_seconds?: number | null;
+      form_score?: number | null;
+      injury_flag?: boolean;
+      feedback?: string | null;
+    },
     token?: string | null
   ): Promise<any> {
-    return apiClient.post(`/api/v1/sessions/${sessionId}/log-exercise`, payload, { token });
+    const body = {
+      exercise_id: payload.exercise_id,
+      set_number: payload.set_number ?? payload.sets ?? 1,
+      reps: payload.reps ?? null,
+      weight_kg: payload.weight_kg ?? null,
+      duration_sec: payload.duration_sec ?? payload.duration_seconds ?? null,
+      form_score: payload.form_score ?? null,
+      injury_flag: payload.injury_flag ?? false,
+      feedback: payload.feedback ?? null,
+    };
+    return apiClient.post(`/api/v1/sessions/${sessionId}/log-exercise`, body, { token });
   },
 
   async submitPoseAnalysis(
     payload: {
       session_id?: string;
       exercise_id: string;
+      set_number?: number;
       reps: number;
-      form_score: number;
-      rep_scores?: number[];
-      flags?: string[];
+      weight_kg?: number | null;
+      duration_sec?: number | null;
       duration_ms?: number;
+      form_score: number;
+      injury_flag?: boolean;
+      flagged_body_parts?: string[];
+      flags?: string[];
+      rep_scores?: number[];
+      notes?: string | null;
     },
     token?: string | null
   ): Promise<any> {
-    return apiClient.post('/api/v1/pose-analysis', payload, { token });
+    const body = {
+      session_id: payload.session_id,
+      exercise_id: payload.exercise_id,
+      set_number: payload.set_number ?? 1,
+      reps: payload.reps,
+      weight_kg: payload.weight_kg ?? null,
+      duration_sec: payload.duration_sec ?? (payload.duration_ms ? Math.round(payload.duration_ms / 1000) : null),
+      form_score: payload.form_score,
+      injury_flag: payload.injury_flag ?? (payload.flags && payload.flags.length > 0) ?? false,
+      flagged_body_parts: payload.flagged_body_parts ?? payload.flags ?? [],
+      rep_scores: payload.rep_scores,
+      notes: payload.notes ?? null,
+    };
+    return apiClient.post('/api/v1/pose-analysis', body, { token });
   },
 
   async updateUserProfile(

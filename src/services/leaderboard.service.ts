@@ -37,7 +37,7 @@ export class LeaderboardService {
         display_name: u.display_name,
         avatar_url: u.avatar_url,
       },
-      value: Math.max(0, 1000 - (offset + i) * 20),
+      value: (u as any).value ?? (u as any).total_reps ?? 0,
       metric: options.metric || 'total_reps',
     }));
 

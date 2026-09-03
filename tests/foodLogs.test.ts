@@ -2,7 +2,7 @@ import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import app from '../src/app.js';
-import { supabaseAnon } from '../src/config/supabase.js';
+import { supabaseAnon, supabaseAdmin } from '../src/config/supabase.js';
 
 describe('Phase 35 Backend: Daily Food Logs APIs (/api/v1/nutrition/logs)', () => {
   const userAId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
@@ -33,6 +33,24 @@ describe('Phase 35 Backend: Daily Food Logs APIs (/api/v1/nutrition/logs)', () =
   it('TEST 2: Authenticated user creates a valid food log item', async () => {
     mockAuthUserA();
 
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      assert.equal(table, 'daily_food_logs');
+      return {
+        insert: (payload: any) => ({
+          select: () => ({
+            single: () => Promise.resolve({
+              data: {
+                id: 'food-log-uuid-1',
+                ...payload,
+                created_at: new Date().toISOString(),
+              },
+              error: null,
+            }),
+          }),
+        }),
+      };
+    });
+
     const res = await request(app)
       .post('/api/v1/nutrition/logs')
       .set('Authorization', 'Bearer valid-user-a-token')
@@ -49,6 +67,8 @@ describe('Phase 35 Backend: Daily Food Logs APIs (/api/v1/nutrition/logs)', () =
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.meal_name, 'Wild Caught Salmon & Quinoa');
     assert.equal(res.body.data.calories, 650);
+
+    mock.restoreAll();
   });
 
   it('TEST 3: Rejects invalid negative calories with 422 VALIDATION_ERROR', async () => {

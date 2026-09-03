@@ -449,4 +449,137 @@ describe('Phase 5: Request Validation Hardening', () => {
     assert.equal(serviceExecuted, true);
     assert.equal(res.body.data.id, mockCreatedWorkout.id);
   });
+
+  // 19. Accepts mobile client parameter names (sets, duration_seconds) on POST /sessions/:id/log-exercise
+  it('19. Accepts mobile client parameter names (sets, duration_seconds) on log-exercise', async () => {
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      if (table === 'sessions') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { id: mockSessionId, user_id: mockUserId, status: 'active' },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'exercises') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { id: mockExerciseId1, name: 'Squat' },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'session_exercises') {
+        return {
+          insert: (payload: any) => {
+            assert.equal(payload.set_number, 2);
+            assert.equal(payload.duration_sec, 45);
+            return {
+              select: () => ({
+                single: () => Promise.resolve({
+                  data: { id: 'se-1', ...payload },
+                  error: null,
+                }),
+              }),
+            };
+          },
+        };
+      }
+      return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) };
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/sessions/${mockSessionId}/log-exercise`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        exercise_id: mockExerciseId1,
+        sets: 2,
+        reps: 10,
+        duration_seconds: 45,
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.set_number, 2);
+    assert.equal(res.body.data.duration_sec, 45);
+  });
+
+  // 20. Accepts mobile client parameter names (flags, duration_ms) on POST /pose-analysis
+  it('20. Accepts mobile client parameter names (flags, duration_ms) on pose-analysis', async () => {
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      if (table === 'sessions') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { id: mockSessionId, user_id: mockUserId, status: 'active' },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'exercises') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { id: mockExerciseId1, name: 'Push-up' },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'session_exercises') {
+        return {
+          insert: (payload: any) => {
+            assert.equal(payload.duration_sec, 30);
+            return {
+              select: () => ({
+                single: () => Promise.resolve({
+                  data: { id: 'se-2', ...payload },
+                  error: null,
+                }),
+              }),
+            };
+          },
+        };
+      }
+      if (table === 'injury_flags') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () => Promise.resolve({ data: { id: 'inj-1' }, error: null }),
+            }),
+          }),
+        };
+      }
+      return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) };
+    });
+
+    const res = await request(app)
+      .post('/api/v1/pose-analysis')
+      .set('Authorization', 'Bearer token')
+      .send({
+        session_id: mockSessionId,
+        exercise_id: mockExerciseId1,
+        reps: 15,
+        form_score: 88,
+        flags: ['elbow_flare'],
+        duration_ms: 30000,
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.form_score, 88);
+  });
 });

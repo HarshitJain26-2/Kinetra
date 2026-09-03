@@ -148,7 +148,7 @@ export const PoseSkeletonOverlay: React.FC<PoseSkeletonOverlayProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
