@@ -206,11 +206,15 @@ export const LoginScreen: React.FC<ScreenProps<'Login'>> = ({ navigation }) => {
       }
 
       const success = await signIn(email, password);
-      if (success) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+      if (success && navigation?.reset) {
+        try {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          });
+        } catch {
+          // Automatic conditional navigation transition handled by RootNavigator
+        }
       }
     } finally {
       isSubmittingRef.current = false;
@@ -540,7 +544,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   backgroundWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backgroundImage: {
     flex: 1,
@@ -548,7 +552,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.88)',
   },
   safeContainer: {

@@ -222,13 +222,8 @@ export const SignUpScreen: React.FC<ScreenProps<'SignUp'>> = ({ navigation }) =>
         return;
       }
 
-      const success = await signUp(email, password, fullName);
-      if (success) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
-      }
+      await signUp(email, password, fullName);
+      // AuthContext updates `session`, automatically mounting the authenticated branch ('Main')
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);
@@ -537,7 +532,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   backgroundWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backgroundImage: {
     flex: 1,
@@ -545,7 +540,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.88)',
   },
   safeContainer: {

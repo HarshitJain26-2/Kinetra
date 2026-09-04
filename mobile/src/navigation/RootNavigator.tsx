@@ -43,85 +43,97 @@ export const RootNavigator: React.FC = () => {
   return (
     <NavigationContainer theme={KinetraDarkNavTheme}>
       <Stack.Navigator
-        initialRouteName={session ? 'Main' : 'Splash'}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
           contentStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="Main" component={BottomTabNavigator} />
-        <Stack.Screen name="HomePlaceholder" component={BottomTabNavigator} />
-        <Stack.Screen
-          name="WorkoutDetails"
-          component={WorkoutDetailsScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="LiveWorkout"
-          component={LiveWorkoutScreen}
-          options={{
-            animation: 'slide_from_bottom',
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="ManualWorkout"
-          component={ManualWorkoutScreen}
-          options={{
-            animation: 'slide_from_bottom',
-          }}
-        />
-        <Stack.Screen
-          name="Nutrition"
-          component={NutritionScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="MealRecommendations"
-          component={MealRecommendationsScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="MealDetails"
-          component={MealDetailsScreen}
-          options={{
-            animation: 'slide_from_bottom',
-          }}
-        />
-        <Stack.Screen
-          name="EditProfile"
-          component={EditProfileScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="CreateWorkout"
-          component={CreateWorkoutScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="ExerciseProgress"
-          component={ExerciseProgressScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
+        {session ? (
+          <Stack.Group>
+            <Stack.Screen name="Main" component={BottomTabNavigator} />
+            <Stack.Screen name="HomePlaceholder" component={BottomTabNavigator} />
+            <Stack.Screen
+              name="WorkoutDetails"
+              component={WorkoutDetailsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="LiveWorkout"
+              component={LiveWorkoutScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen
+              name="ManualWorkout"
+              component={ManualWorkoutScreen}
+              options={{
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="Nutrition"
+              component={NutritionScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="MealRecommendations"
+              component={MealRecommendationsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="MealDetails"
+              component={MealDetailsScreen}
+              options={{
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="CreateWorkout"
+              component={CreateWorkoutScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="ExerciseProgress"
+              component={ExerciseProgressScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+          </Stack.Group>
+        ) : (
+          <Stack.Group>
+            <Stack.Screen name="Splash" component={SplashScreen} />
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          </Stack.Group>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

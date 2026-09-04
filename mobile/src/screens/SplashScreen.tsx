@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   backgroundWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backgroundImage: {
     flex: 1,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.82)',
   },
   safeContainer: {

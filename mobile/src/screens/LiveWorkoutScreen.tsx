@@ -764,10 +764,10 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     return (
       <View style={styles.initRoot}>
         {/* Background Atmosphere */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: initBgOpacity }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: initBgOpacity }]}>
           <ImageBackground
             source={images.gymBarbell}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             imageStyle={styles.initBgImageStyle}
           >
             <View style={styles.initBackdropOverlay} />
@@ -1011,7 +1011,7 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     return (
       <View style={styles.summaryRoot}>
         {/* Background Canvas with subtle athletic asset & dark scrim */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: summaryBgOpacity }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: summaryBgOpacity }]}>
           <ImageBackground
             source={images.gymBarbell}
             style={styles.summaryBackgroundImage}
@@ -1243,10 +1243,10 @@ export const LiveWorkoutScreen: React.FC<ScreenProps<'LiveWorkout'>> = ({
     return (
       <View style={styles.errorRoot}>
         {/* Atmospheric Dark Obsidian Scrim Background */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: errorBgOpacity }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: errorBgOpacity }]}>
           <ImageBackground
             source={images.gymBarbell}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             imageStyle={styles.errorBgImageStyle}
           >
             <View style={styles.errorBackdropOverlay} />
@@ -1659,7 +1659,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   initBackdropOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.94)',
   },
   initSafeContainer: {
@@ -2055,14 +2055,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#050607',
   },
   summaryBackgroundImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   summaryBgImageStyle: {
     opacity: 0.18,
     resizeMode: 'cover',
   },
   summaryBackdropOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.92)',
   },
   summarySafeContainer: {
@@ -2548,7 +2548,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   errorBackdropOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 6, 7, 0.94)',
   },
   errorSafeContainer: {

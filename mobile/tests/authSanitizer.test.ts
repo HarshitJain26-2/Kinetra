@@ -24,6 +24,14 @@ describe('Mobile Auth Error Sanitizer Tests', () => {
     );
   });
 
+  it('maps email rate limit errors to actionable dashboard advice', () => {
+    const error = { message: 'email rate limit exceeded', status: 429, code: 'over_email_send_rate_limit' };
+    assert.equal(
+      sanitizeAuthError(error),
+      'Email rate limit reached. Please disable "Confirm email" in Supabase Auth settings or wait a few minutes.'
+    );
+  });
+
   it('maps network failures to connection prompt', () => {
     const error = new Error('Failed to fetch from network');
     assert.equal(

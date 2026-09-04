@@ -16,6 +16,10 @@ export function sanitizeAuthError(error: any): string {
     return 'Password must be at least 8 characters long.';
   }
 
+  if (message.includes('email rate limit') || (typeof error === 'object' && error?.code === 'over_email_send_rate_limit')) {
+    return 'Email rate limit reached. Please disable "Confirm email" in Supabase Auth settings or wait a few minutes.';
+  }
+
   if (message.includes('rate limit') || status === 429) {
     return 'Too many attempts. Please wait a moment and try again.';
   }
