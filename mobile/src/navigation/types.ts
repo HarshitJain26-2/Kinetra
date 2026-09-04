@@ -35,6 +35,7 @@ export type RootStackParamList = {
     workout?: WorkoutItem;
   };
   ExerciseProgress: undefined;
+  Profile: undefined;
 };
 
 export type MainTabParamList = {

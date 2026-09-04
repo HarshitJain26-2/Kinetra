@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../config/supabase';
 import { sanitizeAuthError } from '../utils/authErrors';
+import { apiClient } from '../api/client';
+
 
 export interface AuthState {
   user: User | null;
@@ -133,7 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(data.user);
       setSession(data.session);
+
+      // Safe profile provisioning flow: ensure profile row exists immediately
+      if (data.session?.access_token) {
+        apiClient.getCurrentUserProfile(data.session.access_token).catch(() => {});
+      }
+
       return true;
+
     } catch (err) {
       setError(sanitizeAuthError(err));
       return false;

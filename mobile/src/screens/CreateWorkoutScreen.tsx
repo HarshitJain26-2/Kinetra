@@ -35,6 +35,7 @@ interface DraftExercise {
   target_reps: number;
   target_weight_kg?: number;
   rest_seconds: number;
+  exercise?: ExerciseCatalogItem;
 }
 
 export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = ({
@@ -46,6 +47,7 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
   const [catalog, setCatalog] = useState<ExerciseCatalogItem[]>([]);
   const [activeExercises, setActiveExercises] = useState<DraftExercise[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [isCatalogUnseeded, setIsCatalogUnseeded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,27 +188,26 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
     const fetchCatalog = async () => {
       try {
         const list = await apiClient.getExercises({ limit: 50 });
+        if (typeof __DEV__ !== 'undefined' && __DEV__) {
+          console.log('[GET /exercises CANONICAL RESULT]', {
+            count: Array.isArray(list) ? list.length : 0,
+            sample: Array.isArray(list) ? list.slice(0, 3).map((e) => ({ id: e.id, name: e.name })) : [],
+          });
+        }
         if (Array.isArray(list) && list.length > 0) {
           setCatalog(list);
+          setIsCatalogUnseeded(false);
         } else {
-          // Foundational compound catalog
-          setCatalog([
-            { id: '11111111-0000-0000-0000-000000000001', name: 'Barbell Back Squat', muscle_group: 'LEGS', difficulty: 'hard' },
-            { id: '11111111-0000-0000-0000-000000000002', name: 'Overhead Press', muscle_group: 'PUSH', difficulty: 'medium' },
-            { id: '11111111-0000-0000-0000-000000000003', name: 'Romanian Deadlift', muscle_group: 'PULL', difficulty: 'hard' },
-            { id: '11111111-0000-0000-0000-000000000004', name: 'Barbell Bench Press', muscle_group: 'PUSH', difficulty: 'medium' },
-            { id: '11111111-0000-0000-0000-000000000005', name: 'Weighted Pull-Ups', muscle_group: 'PULL', difficulty: 'hard' },
-          ]);
+          setIsCatalogUnseeded(true);
+          setCatalog([]);
         }
       } catch {
-        setCatalog([
-          { id: '11111111-0000-0000-0000-000000000001', name: 'Barbell Back Squat', muscle_group: 'LEGS', difficulty: 'hard' },
-          { id: '11111111-0000-0000-0000-000000000002', name: 'Overhead Press', muscle_group: 'PUSH', difficulty: 'medium' },
-          { id: '11111111-0000-0000-0000-000000000003', name: 'Romanian Deadlift', muscle_group: 'PULL', difficulty: 'hard' },
-        ]);
+        setIsCatalogUnseeded(true);
+        setCatalog([]);
       } finally {
         setLoadingCatalog(false);
       }
+
     };
     fetchCatalog();
   }, []);
@@ -225,7 +226,17 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
       target_sets: 4,
       target_reps: 10,
       rest_seconds: 90,
+      exercise: item,
     };
+
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[ACTIVE PROTOCOL ADD]', {
+        name: item.name,
+        canonical_exercise_id: item.id,
+        order_index: newEx.order_index,
+      });
+    }
+
     setActiveExercises((prev) => [...prev, newEx]);
   };
 
@@ -272,6 +283,39 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
       return;
     }
 
+    if (isCatalogUnseeded || catalog.length === 0) {
+      setError('Database exercise catalog is unseeded. Run migration 002_seed_exercises.sql in Supabase SQL Editor to save protocols.');
+      return;
+    }
+
+    const invalidExercise = activeExercises.find(
+      (e) => !catalog.some((c) => c.id === e.exercise_id)
+    );
+    if (invalidExercise) {
+      setError(`Movement "${invalidExercise.name}" is not present in the live database catalog.`);
+      return;
+    }
+
+
+    const payloadExercises = activeExercises.map((e) => ({
+      exercise_id: e.exercise_id,
+      order_index: e.order_index,
+      target_sets: e.target_sets,
+      target_reps: e.target_reps,
+      target_weight_kg: e.target_weight_kg || null,
+    }));
+
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[POST WORKOUT PAYLOAD EXERCISES]', {
+        title: workoutTitle.trim(),
+        total_exercises: payloadExercises.length,
+        exercises: payloadExercises.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          order_index: ex.order_index,
+        })),
+      });
+    }
+
     setSaving(true);
     try {
       const created = await apiClient.createWorkout({
@@ -279,13 +323,7 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
         category: 'strength',
         difficulty: 'medium',
         is_public: false,
-        exercises: activeExercises.map((e) => ({
-          exercise_id: e.exercise_id,
-          order_index: e.order_index,
-          target_sets: e.target_sets,
-          target_reps: e.target_reps,
-          target_weight_kg: e.target_weight_kg || null,
-        })),
+        exercises: payloadExercises,
       });
 
       Alert.alert('Protocol Created', `${workoutTitle} is now ready.`);
@@ -294,7 +332,11 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
         initialWorkout: created,
       });
     } catch (err: any) {
-      setError(err?.message || 'Failed to create workout protocol.');
+      const detailsMsg =
+        err?.details && Array.isArray(err.details)
+          ? err.details.map((d: any) => `${d.field ? `${d.field}: ` : ''}${d.message}`).join(', ')
+          : err?.message;
+      setError(detailsMsg || 'Failed to create workout protocol.');
     } finally {
       setSaving(false);
     }
@@ -402,6 +444,16 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
             </View>
           ) : null}
 
+          {/* UNSEEDED DATABASE CATALOG NOTICE */}
+          {isCatalogUnseeded ? (
+            <View style={styles.unseededCard}>
+              <Icon name="warning" size={16} color={colors.gold} style={{ marginRight: 8 }} />
+              <Text style={styles.unseededText}>
+                Database exercise catalog is unseeded (0 rows in Supabase). Run migration 002_seed_exercises.sql in Supabase SQL Editor to save protocols.
+              </Text>
+            </View>
+          ) : null}
+
           {/* 3. WORKOUT TITLE INPUT */}
           <Animated.View
             style={[
@@ -490,11 +542,20 @@ export const CreateWorkoutScreen: React.FC<{ navigation: any; route?: any }> = (
                 <ActivityIndicator size="small" color={colors.gold} />
                 <Text style={styles.loadingCatalogText}>LOADING EXERCISE CATALOG...</Text>
               </View>
+            ) : isCatalogUnseeded || catalog.length === 0 ? (
+              <View style={styles.emptyCatalogBox} testID="empty-unseeded-catalog">
+                <Icon name="warning" size={20} color={colors.gold} style={{ marginBottom: 6 }} />
+                <Text style={styles.emptyCatalogTitle}>No Exercises Available</Text>
+                <Text style={[styles.emptyCatalogText, { textAlign: 'center', maxWidth: 300 }]}>
+                  Exercise catalog has not been seeded. Run migration 002_seed_exercises.sql in Supabase SQL Editor.
+                </Text>
+              </View>
             ) : filteredCatalog.length === 0 ? (
               <View style={styles.emptyCatalogBox}>
                 <Text style={styles.emptyCatalogText}>No matching movements found in catalog.</Text>
               </View>
             ) : (
+
               filteredCatalog.slice(0, 4).map((ex) => (
                 <TouchableOpacity
                   key={ex.id}
@@ -793,6 +854,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flex: 1,
   },
+  unseededCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(217, 184, 63, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 184, 63, 0.35)',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    marginBottom: spacing.md,
+  },
+  unseededText: {
+    ...typography.bodySm,
+    color: colors.gold,
+    fontSize: 11.5,
+    flex: 1,
+    lineHeight: 16,
+  },
   workoutNameBox: {
     backgroundColor: 'rgba(18, 20, 22, 0.95)',
     borderRadius: borderRadius.sm,
@@ -878,11 +957,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
+  emptyCatalogTitle: {
+    ...typography.bodyMd,
+    color: colors.primaryText,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
   emptyCatalogText: {
     ...typography.bodySm,
     color: colors.tertiaryText,
     fontSize: 12,
   },
+
   catalogCard: {
     flexDirection: 'row',
     alignItems: 'center',

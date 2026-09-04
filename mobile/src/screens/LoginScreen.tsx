@@ -206,16 +206,7 @@ export const LoginScreen: React.FC<ScreenProps<'Login'>> = ({ navigation }) => {
       }
 
       const success = await signIn(email, password);
-      if (success && navigation?.reset) {
-        try {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Main' }],
-          });
-        } catch {
-          // Automatic conditional navigation transition handled by RootNavigator
-        }
-      }
+      // Navigation transition to 'Main' is handled reactively by RootNavigator when session changes
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);

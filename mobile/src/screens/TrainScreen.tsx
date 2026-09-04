@@ -199,7 +199,7 @@ export const TrainScreen: React.FC<TrainScreenProps> = ({ navigation }) => {
           difficulty: 'medium',
           exercises: [
             {
-              exercise_id: '11111111-0000-0000-0000-000000000001',
+              exercise_id: '11111111-4444-4444-8888-000000000001',
               name: 'Barbell Back Squat',
               target_sets: 4,
               target_reps: 8,
@@ -207,7 +207,7 @@ export const TrainScreen: React.FC<TrainScreenProps> = ({ navigation }) => {
               order_index: 0,
             },
             {
-              exercise_id: '11111111-0000-0000-0000-000000000002',
+              exercise_id: '11111111-4444-4444-8888-000000000002',
               name: 'Overhead Press',
               target_sets: 3,
               target_reps: 10,

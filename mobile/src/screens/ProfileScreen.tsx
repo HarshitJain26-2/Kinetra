@@ -488,6 +488,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   </View>
                 </>
               )}
+
+              {/* Biometrics Telemetry Strip */}
+              <View style={styles.biometricsStrip}>
+                <View style={styles.biometricItem}>
+                  <Text style={styles.biometricLabel}>HEIGHT</Text>
+                  <Text style={styles.biometricValue}>
+                    {profileData?.height_cm ? `${profileData.height_cm} cm` : '--'}
+                  </Text>
+                </View>
+                <View style={styles.biometricDivider} />
+                <View style={styles.biometricItem}>
+                  <Text style={styles.biometricLabel}>MASS</Text>
+                  <Text style={styles.biometricValue}>
+                    {profileData?.weight_kg ? `${profileData.weight_kg} kg` : '--'}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.editBiometricsBtn}
+                onPress={() => navigation?.navigate('EditProfile')}
+                testID="profile-edit-biometrics-btn"
+                accessibilityLabel="Edit Biometrics"
+                accessibilityRole="button"
+              >
+                <Icon name="sparkle" size={12} color={colors.inverseText} style={{ marginRight: 6 }} />
+                <Text style={styles.editBiometricsBtnText}>EDIT BIOMETRICS & PROTOCOL</Text>
+              </TouchableOpacity>
             </Animated.View>
 
             {/* 3. METRICS OVERVIEW OR EMPTY STATE */}
@@ -992,6 +1020,61 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 12.5,
     maxWidth: 290,
+  },
+  biometricsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: spacing.md,
+    width: '100%',
+  },
+  biometricItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  biometricLabel: {
+    ...typography.labelCaps,
+    fontSize: 9,
+    color: colors.tertiaryText,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  biometricValue: {
+    ...typography.labelCaps,
+    fontSize: 14,
+    color: colors.primaryText,
+    fontWeight: '700',
+  },
+  biometricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginHorizontal: 12,
+  },
+  editBiometricsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.gold,
+    borderRadius: borderRadius.xs,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    marginTop: spacing.md,
+    width: '100%',
+  },
+  editBiometricsBtnText: {
+    ...typography.labelCaps,
+    color: colors.inverseText,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
 
   // Populated Metrics Overview Grid

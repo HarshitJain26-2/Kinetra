@@ -46,10 +46,16 @@ export const EditProfileScreen: React.FC<{ navigation: any; route?: any }> = ({
           if (data.weight_kg) setWeightKg(String(data.weight_kg));
         }
       } catch {
-        setDisplayName('Apex_01');
+        setDisplayName(
+          user?.user_metadata?.full_name ||
+          user?.user_metadata?.display_name ||
+          (user?.email ? user.email.split('@')[0] : 'Athlete')
+        );
       } finally {
         setLoading(false);
       }
+
+
     };
     loadProfile();
   }, [user]);

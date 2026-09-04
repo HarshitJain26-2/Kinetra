@@ -18,6 +18,7 @@ import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { CreateWorkoutScreen } from '../screens/CreateWorkoutScreen';
 import { ManualWorkoutScreen } from '../screens/ManualWorkoutScreen';
 import { ExerciseProgressScreen } from '../screens/ExerciseProgressScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -120,6 +121,13 @@ export const RootNavigator: React.FC = () => {
             <Stack.Screen
               name="ExerciseProgress"
               component={ExerciseProgressScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
               options={{
                 animation: 'slide_from_right',
               }}

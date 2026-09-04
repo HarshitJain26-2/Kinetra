@@ -29,7 +29,10 @@ export const requireAuth = async (
       id: data.user.id,
       email: data.user.email,
       role: data.user.role,
+      user_metadata: data.user.user_metadata,
+      token,
     };
+
 
     next();
   } catch (error) {

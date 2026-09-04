@@ -141,4 +141,64 @@ describe('Mobile API Client & Security Tests', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('normalizes base URL by stripping redundant /api/v1 to prevent double prefixing', () => {
+    const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    try {
+      process.env.EXPO_PUBLIC_API_URL = 'http://10.107.148.172:5000/api/v1/';
+      const resolved = getApiBaseUrl();
+      assert.equal(resolved, 'http://10.107.148.172:5000');
+      assert.equal(resolved.endsWith('/api/v1'), false);
+    } finally {
+      process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
+    }
+  });
+
+  it('classifies network connection failure as NETWORK_ERROR with status 0', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+
+    try {
+      await assert.rejects(
+        async () => {
+          await apiRequest('/api/v1/workouts');
+        },
+        (err: any) => {
+          assert.equal(err instanceof ApiError, true);
+          assert.equal(err.code, 'NETWORK_ERROR');
+          assert.equal(err.status, 0);
+          return true;
+        }
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('classifies fetch abort as TIMEOUT_ERROR with status 408', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      const err = new Error('The operation was aborted');
+      err.name = 'AbortError';
+      throw err;
+    };
+
+    try {
+      await assert.rejects(
+        async () => {
+          await apiRequest('/api/v1/workouts');
+        },
+        (err: any) => {
+          assert.equal(err instanceof ApiError, true);
+          assert.equal(err.code, 'TIMEOUT_ERROR');
+          assert.equal(err.status, 408);
+          return true;
+        }
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

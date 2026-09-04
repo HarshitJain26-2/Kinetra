@@ -426,4 +426,59 @@ describe('Phase 6: User APIs (/auth/me, /users/me, /users/:id)', () => {
 
     mock.restoreAll();
   });
+
+  it('TEST 15: PUT /api/v1/users/me self-heals and creates user profile via upsert if row does not exist yet', async () => {
+    mockAuthUserA();
+
+    let upsertPayload: any = null;
+
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      assert.equal(table, 'users');
+      return {
+        update: () => ({
+          eq: () => ({
+            select: () => ({
+              single: async () => ({ data: null, error: { message: 'Row not found' } }),
+            }),
+          }),
+        }),
+        upsert: (data: any) => {
+          upsertPayload = data;
+          return {
+            select: () => ({
+              single: async () => ({
+                data: {
+                  id: userAId,
+                  ...data,
+                  created_at: '2026-09-04T12:00:00.000Z',
+                  updated_at: '2026-09-04T12:00:00.000Z',
+                },
+                error: null,
+              }),
+            }),
+          };
+        },
+      };
+    });
+
+    const res = await request(app)
+      .put('/api/v1/users/me')
+      .set('Authorization', 'Bearer valid-user-a-jwt')
+      .send({
+        display_name: 'Apex Athlete',
+        height_cm: 182,
+        weight_kg: 80.5,
+      });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.display_name, 'Apex Athlete');
+    assert.equal(res.body.data.height_cm, 182);
+    assert.equal(res.body.data.weight_kg, 80.5);
+    assert.equal(upsertPayload.id, userAId);
+    assert.equal(upsertPayload.height_cm, 182);
+    assert.equal(upsertPayload.weight_kg, 80.5);
+
+    mock.restoreAll();
+  });
 });

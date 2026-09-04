@@ -37,11 +37,18 @@ interface ExploreScreenProps {
   navigation?: any;
 }
 
+interface ErrorState {
+  type: 'AUTH' | 'NETWORK' | 'TIMEOUT' | 'NOT_FOUND' | 'SERVER' | 'GENERIC';
+  title: string;
+  message: string;
+}
+
 export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [workouts, setWorkouts] = useState<WorkoutItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<ErrorState | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Staggered Entrance Animation Values
@@ -204,6 +211,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
 
   const fetchWorkoutList = useCallback(async (categoryId: string) => {
     setError(null);
+    setErrorInfo(null);
     try {
       const selectedOption = CATEGORIES.find((c) => c.id === categoryId);
       const filters = selectedOption?.backendCategory
@@ -213,10 +221,59 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
       const data = await apiClient.getWorkouts(filters);
       setWorkouts(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(
-        err?.message ||
-          'Our elite servers are temporarily unreachable. Please verify your secure connection and try again.'
-      );
+      const status = err?.status;
+      const code = err?.code;
+      const msg = err?.message || '';
+
+      if (status === 401 || status === 403 || code === 'INVALID_TOKEN') {
+        const info: ErrorState = {
+          type: 'AUTH',
+          title: 'Authentication Required',
+          message: 'Please sign in to explore and begin elite workout regimens.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      } else if (code === 'TIMEOUT_ERROR' || status === 408) {
+        const info: ErrorState = {
+          type: 'TIMEOUT',
+          title: 'Request Timed Out',
+          message: 'The server took too long to respond. Please check your network and try again.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      } else if (code === 'NETWORK_ERROR' || status === 0) {
+        const info: ErrorState = {
+          type: 'NETWORK',
+          title: 'Connection Interrupted',
+          message: 'Our servers are unreachable. Please verify your Wi-Fi and ensure your device is connected to the same network as the development server.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      } else if (status === 404 || code === 'NOT_FOUND') {
+        const info: ErrorState = {
+          type: 'NOT_FOUND',
+          title: 'Catalog Unavailable',
+          message: 'The workout protocol catalog could not be found.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      } else if (status && status >= 500) {
+        const info: ErrorState = {
+          type: 'SERVER',
+          title: 'Server Error',
+          message: 'Our servers encountered an unexpected issue. Please try again shortly.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      } else {
+        const info: ErrorState = {
+          type: 'GENERIC',
+          title: 'Protocol Error',
+          message: msg || 'Unable to load workouts. Please try again.',
+        };
+        setErrorInfo(info);
+        setError(info.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -441,30 +498,49 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
           ) : error ? (
             /* Stitch Luxury Error State */
             <View style={styles.errorCard} testID="workouts-error-state">
-              <View style={styles.warningCircle}>
-                <Icon name="warning" size={28} color={colors.crimson} />
+              <View style={[styles.warningCircle, errorInfo?.type === 'AUTH' && styles.warningCircleAuth]}>
+                <Icon
+                  name={errorInfo?.type === 'AUTH' ? 'profile' : 'warning'}
+                  size={28}
+                  color={errorInfo?.type === 'AUTH' ? colors.gold : colors.crimson}
+                />
               </View>
-              <Text style={styles.errorTitle}>Connection Interrupted</Text>
+              <Text style={styles.errorTitle}>{errorInfo?.title || 'Connection Interrupted'}</Text>
               <Text style={styles.errorSubtitle}>
-                Our elite servers are temporarily unreachable. Please verify your secure connection and try again.
+                {errorInfo?.message ||
+                  'Our elite servers are temporarily unreachable. Please verify your secure connection and try again.'}
               </Text>
-              <TouchableWithoutFeedback
-                {...retrySpring}
-                onPress={() => fetchWorkoutList(selectedCategory)}
-                testID="workouts-retry-button"
-                accessibilityRole="button"
-                accessibilityLabel="Retry fetching workouts"
-              >
-                <Animated.View
-                  style={[
-                    styles.retryButton,
-                    { transform: [{ scale: retryBtnScale }] },
-                  ]}
+              <View style={styles.errorActionsRow}>
+                {errorInfo?.type === 'AUTH' && (
+                  <TouchableOpacity
+                    style={styles.signInButton}
+                    onPress={() => navigation?.navigate('Login')}
+                    testID="workouts-auth-signin-button"
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign in to your account"
+                  >
+                    <Text style={styles.signInButtonText}>SIGN IN</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableWithoutFeedback
+                  {...retrySpring}
+                  onPress={() => fetchWorkoutList(selectedCategory)}
+                  testID="workouts-retry-button"
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry fetching workouts"
                 >
-                  <Icon name="retry" size={14} color={colors.inverseText} style={styles.retryIcon} />
-                  <Text style={styles.retryButtonText}>RETRY</Text>
-                </Animated.View>
-              </TouchableWithoutFeedback>
+                  <Animated.View
+                    style={[
+                      styles.retryButton,
+                      { transform: [{ scale: retryBtnScale }] },
+                    ]}
+                  >
+                    <Icon name="retry" size={14} color={colors.inverseText} style={styles.retryIcon} />
+                    <Text style={styles.retryButtonText}>RETRY</Text>
+                  </Animated.View>
+                </TouchableWithoutFeedback>
+              </View>
             </View>
           ) : workouts.length === 0 ? (
             /* Stitch Empty State */
@@ -731,6 +807,34 @@ const styles = StyleSheet.create({
   retryButtonText: {
     ...typography.labelCaps,
     color: colors.inverseText,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '800',
+  },
+  errorActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  warningCircleAuth: {
+    borderColor: 'rgba(217, 184, 63, 0.5)',
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+  },
+  signInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    height: 48,
+    borderRadius: borderRadius.xs,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(217, 184, 63, 0.12)',
+  },
+  signInButtonText: {
+    ...typography.labelCaps,
+    color: colors.gold,
     fontSize: 11,
     letterSpacing: 1.5,
     fontWeight: '800',

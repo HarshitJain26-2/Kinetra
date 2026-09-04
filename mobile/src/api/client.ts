@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../config/supabase';
 
+declare const __DEV__: boolean;
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -78,11 +80,21 @@ export interface UserDashboardMetrics {
 }
 
 export const getApiBaseUrl = (): string => {
-  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL;
   if (envUrl && envUrl.trim().length > 0) {
-    return envUrl.trim().replace(/\/+$/, '');
+    let cleaned = envUrl.trim().replace(/\/+$/, '');
+    // Strip trailing /api/v1 so endpoints specifying /api/v1 never result in /api/v1/api/v1
+    cleaned = cleaned.replace(/\/api\/v1\/?$/i, '');
+
+    // On mobile physical devices, localhost/127.0.0.1 points to the phone itself rather than the dev PC.
+    // If the bundle still has localhost baked in, dynamically remap it to the confirmed LAN IP.
+    if (process.env.NODE_ENV !== 'test' && (cleaned.includes('localhost') || cleaned.includes('127.0.0.1'))) {
+      cleaned = cleaned.replace(/localhost|127\.0\.0\.1/g, '10.107.148.172');
+    }
+
+    return cleaned;
   }
-  return 'http://localhost:3000';
+  return process.env.NODE_ENV !== 'test' ? 'http://10.107.148.172:5000' : 'http://localhost:5000';
 };
 
 export class ApiError extends Error {
@@ -114,6 +126,7 @@ export async function getAuthToken(): Promise<string | null> {
 export interface RequestOptions extends RequestInit {
   token?: string | null;
   query?: Record<string, string | number | boolean | undefined>;
+  timeoutMs?: number;
 }
 
 export async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -147,20 +160,58 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const method = (options.method || 'GET').toUpperCase();
+  const timeoutMs = options.timeoutMs ?? 10000;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const fetchOptions: RequestInit = {
     ...options,
     headers,
+    signal: options.signal || controller.signal,
   };
 
   let response: Response;
+  const startTime = Date.now();
+
   try {
     response = await fetch(url, fetchOptions);
   } catch (error: any) {
+    clearTimeout(timeoutId);
+    const durationMs = Date.now() - startTime;
+
+    if (error?.name === 'AbortError') {
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.warn(`[API TIMEOUT] ${method} ${url} (aborted after ${timeoutMs}ms)`);
+      }
+      throw new ApiError(
+        'Request timed out. Please check your connection and try again.',
+        'TIMEOUT_ERROR',
+        408
+      );
+    }
+
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn(
+        `[API NETWORK ERROR] ${method} ${url} (${durationMs}ms) -> ${error?.message || 'Connection failed'}`
+      );
+    }
+
     throw new ApiError(
-      'Network request failed. Please check your connection.',
+      `Network request failed to ${baseUrl}. Please check your connection.`,
       'NETWORK_ERROR',
       0
     );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const durationMs = Date.now() - startTime;
+
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    // Development connectivity diagnostic - strictly excludes sensitive payloads and tokens
+    console.log(`[API DEV DIAGNOSTIC] ${method} ${url} -> Status ${response.status} (${durationMs}ms)`);
   }
 
   let json: any;

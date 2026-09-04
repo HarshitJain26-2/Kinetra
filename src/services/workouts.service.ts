@@ -56,6 +56,14 @@ export class WorkoutsService {
       throw new InternalServerError('Failed to validate exercise references');
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[BACKEND DB EXERCISE LOOKUP]', {
+        requested_ids: uniqueIds,
+        found_in_db_count: existing?.length || 0,
+        found_ids: existing?.map((e) => e.id) || [],
+      });
+    }
+
     if (!existing || existing.length !== uniqueIds.length) {
       throw new BadRequestError('One or more referenced exercises do not exist in catalog', 'VALIDATION_ERROR');
     }

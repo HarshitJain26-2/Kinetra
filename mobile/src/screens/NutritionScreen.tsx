@@ -318,7 +318,7 @@ export const NutritionScreen: React.FC<NutritionScreenProps> = ({ navigation }) 
 
   const handleCompleteProfile = () => {
     if (navigation?.navigate) {
-      navigation.navigate('Profile');
+      navigation.navigate('EditProfile');
     }
   };
 

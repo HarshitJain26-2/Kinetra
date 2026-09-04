@@ -632,4 +632,137 @@ describe('Phase 8: Workout APIs (/api/v1/workouts)', () => {
 
     mock.restoreAll();
   });
+
+  // ---------------------------------------------------------------------------
+  // 8. Canonical Exercise ID & Catalog Validation Invariants (D, E, F, G, H)
+  // ---------------------------------------------------------------------------
+  it('TEST 16 (D & F): Backend accepts multiple valid catalog exercises with canonical IDs', async () => {
+    mockAuthUserA();
+
+    const canonicalEx1 = '11111111-4444-4444-8888-000000000001';
+    const canonicalEx2 = '11111111-4444-4444-8888-000000000002';
+    let validatedIds: string[] = [];
+    let insertedExerciseRows: any[] = [];
+
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      if (table === 'exercises') {
+        return {
+          select: () => ({
+            in: (field: string, ids: string[]) => {
+              validatedIds = ids;
+              return Promise.resolve({
+                data: [{ id: canonicalEx1 }, { id: canonicalEx2 }],
+                error: null,
+              });
+            },
+          }),
+        };
+      }
+      if (table === 'workouts') {
+        return {
+          insert: (data: any) => ({
+            select: () => ({
+              single: async () => ({
+                data: { id: workout1Id, ...data, created_at: '2026-09-04T12:00:00.000Z', updated_at: '2026-09-04T12:00:00.000Z' },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'workout_exercises') {
+        return {
+          insert: (rows: any[]) => {
+            insertedExerciseRows = rows;
+            return {
+              select: () => Promise.resolve({
+                data: rows.map((r, idx) => ({ id: `we-${idx}`, ...r, exercise: { id: r.exercise_id, name: `Exercise ${idx + 1}` } })),
+                error: null,
+              }),
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await request(app)
+      .post('/api/v1/workouts')
+      .set('Authorization', 'Bearer valid-user-a-jwt')
+      .send({
+        title: 'Multi-Exercise Protocol',
+        exercises: [
+          { exercise_id: canonicalEx1, order_index: 0, target_sets: 4, target_reps: 10 },
+          { exercise_id: canonicalEx2, order_index: 1, target_sets: 3, target_reps: 12 },
+        ],
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.deepEqual(validatedIds.sort(), [canonicalEx1, canonicalEx2].sort());
+    assert.equal(insertedExerciseRows.length, 2);
+    assert.equal(insertedExerciseRows[0].exercise_id, canonicalEx1);
+    assert.equal(insertedExerciseRows[1].exercise_id, canonicalEx2);
+
+    mock.restoreAll();
+  });
+
+  it('TEST 17 (E): Backend strictly rejects genuinely non-existent exercise in catalog with 400 VALIDATION_ERROR', async () => {
+    mockAuthUserA();
+
+    const nonExistentId = '99999999-9999-4999-8999-999999999999';
+
+    mock.method(supabaseAdmin, 'from', (table: string) => {
+      if (table === 'exercises') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({
+              data: [], // 0 found
+              error: null,
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await request(app)
+      .post('/api/v1/workouts')
+      .set('Authorization', 'Bearer valid-user-a-jwt')
+      .send({
+        title: 'Workout with Ghost Exercise',
+        exercises: [
+          { exercise_id: nonExistentId, order_index: 0, target_sets: 3 },
+        ],
+      });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.equal(res.body.error.message, 'One or more referenced exercises do not exist in catalog');
+
+    mock.restoreAll();
+  });
+
+  it('TEST 18 (G & H): Reordering exercises preserves IDs, while duplicate order_index is rejected with 422', async () => {
+    mockAuthUserA();
+
+    // Duplicate order_index should be rejected at validator layer with 422
+    const resDuplicate = await request(app)
+      .post('/api/v1/workouts')
+      .set('Authorization', 'Bearer valid-user-a-jwt')
+      .send({
+        title: 'Workout with Duplicate Indices',
+        exercises: [
+          { exercise_id: '11111111-4444-4444-8888-000000000001', order_index: 0, target_sets: 3 },
+          { exercise_id: '11111111-4444-4444-8888-000000000002', order_index: 0, target_sets: 3 },
+        ],
+      });
+
+    assert.equal(resDuplicate.status, 422);
+    assert.equal(resDuplicate.body.success, false);
+    assert.equal(resDuplicate.body.error.code, 'VALIDATION_ERROR');
+
+    mock.restoreAll();
+  });
 });

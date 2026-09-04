@@ -10,7 +10,11 @@ export class AuthController {
         throw new UnauthorizedError();
       }
 
-      const userProfile = await UsersService.getCurrentUserProfile(req.user.id);
+      const userProfile = await UsersService.getCurrentUserProfile(
+        req.user.id,
+        req.user.token,
+        { email: req.user.email, user_metadata: req.user.user_metadata }
+      );
       sendSuccess(res, {
         id: userProfile.id,
         email: req.user.email,
@@ -41,7 +45,11 @@ export class UsersController {
         throw new UnauthorizedError();
       }
 
-      const fullProfile = await UsersService.getCurrentUserProfile(req.user.id);
+      const fullProfile = await UsersService.getCurrentUserProfile(
+        req.user.id,
+        req.user.token,
+        { email: req.user.email, user_metadata: req.user.user_metadata }
+      );
       sendSuccess(res, {
         ...fullProfile,
         email: req.user.email,
@@ -57,7 +65,12 @@ export class UsersController {
         throw new UnauthorizedError();
       }
 
-      const updated = await UsersService.updateProfile(req.user.id, req.body);
+      const updated = await UsersService.updateProfile(
+        req.user.id,
+        req.body,
+        req.user.token,
+        { email: req.user.email, user_metadata: req.user.user_metadata }
+      );
       sendSuccess(res, {
         ...updated,
         email: req.user.email,
@@ -67,4 +80,5 @@ export class UsersController {
     }
   }
 }
+
 
